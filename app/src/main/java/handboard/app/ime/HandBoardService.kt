@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,6 +45,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         preferencesManager = PreferencesManager(this)
+        wordPredictor.loadDictionary(this)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -71,37 +73,41 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
             val layoutSwitcher = remember { LayoutSwitcher(layoutName) }
             LaunchedEffect(layoutName) { layoutSwitcher.setLayout(layoutName) }
 
-            var currentText by remember { mutableStateOf("") }
-            var suggestions by remember { mutableStateOf(emptyList<String>()) }
+            var composingText by remember { mutableStateOf("") }
+            val suggestions = remember { mutableStateListOf<String>() }
 
             fun updateSuggestions() {
-                if (!predictionsEnabled) {
-                    suggestions = emptyList()
-                    return
-                }
-                val word = wordPredictor.getCurrentWordFromText(currentText)
-                suggestions = wordPredictor.predict(word, suggestionCount)
+                suggestions.clear()
+                if (!predictionsEnabled) return
+                val currentWord = wordPredictor.getCurrentWordFromText(composingText)
+                val results = wordPredictor.predict(currentWord, suggestionCount)
+                suggestions.addAll(results)
             }
 
-            fun commitText(text: String) {
+            fun commitChar(text: String) {
                 currentInputConnection?.commitText(text, 1)
-                currentText += text
+                composingText += text
+
                 if (text == " ") {
-                    val words = currentText.trim().split(" ")
-                    val lastWord = words.lastOrNull() ?: ""
-                    if (lastWord.isNotEmpty()) wordPredictor.learnWord(lastWord)
+                    // Word committed - learn it
+                    val words = composingText.trim().split(" ")
+                    val lastWord = words.lastOrNull { it.isNotEmpty() }
+                    if (lastWord != null) {
+                        wordPredictor.onWordCommitted(lastWord)
+                    }
                 }
                 updateSuggestions()
             }
 
             fun applySuggestion(word: String) {
-                val current = wordPredictor.getCurrentWordFromText(currentText)
-                if (current.isNotEmpty()) {
-                    currentInputConnection?.deleteSurroundingText(current.length, 0)
+                val currentWord = wordPredictor.getCurrentWordFromText(composingText)
+                if (currentWord.isNotEmpty()) {
+                    currentInputConnection?.deleteSurroundingText(currentWord.length, 0)
+                    composingText = composingText.dropLast(currentWord.length)
                 }
                 currentInputConnection?.commitText("$word ", 1)
-                currentText = currentText.dropLast(current.length) + "$word "
-                wordPredictor.learnWord(word)
+                composingText += "$word "
+                wordPredictor.onWordCommitted(word)
                 updateSuggestions()
             }
 
@@ -122,22 +128,24 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                                 )
                             }
                         } else null,
-                        onTextInput = { text -> commitText(text) },
+                        onTextInput = { text -> commitChar(text) },
                         onBackspace = {
                             currentInputConnection?.deleteSurroundingText(1, 0)
-                            if (currentText.isNotEmpty()) {
-                                currentText = currentText.dropLast(1)
+                            if (composingText.isNotEmpty()) {
+                                composingText = composingText.dropLast(1)
                             }
                             updateSuggestions()
                         },
                         onEnter = {
+                            val words = composingText.trim().split(" ")
+                            val lastWord = words.lastOrNull { it.isNotEmpty() }
+                            if (lastWord != null) wordPredictor.onWordCommitted(lastWord)
                             sendDownUpKeyEvents(android.view.KeyEvent.KEYCODE_ENTER)
-                            currentText = ""
-                            suggestions = emptyList()
+                            composingText = ""
+                            suggestions.clear()
                         }
                     )
 
-                    // Extra bottom padding (user adjustable)
                     if (bottomPadding > 0) {
                         Spacer(modifier = Modifier.fillMaxWidth().height(bottomPadding.dp))
                     }

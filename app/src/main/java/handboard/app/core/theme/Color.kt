@@ -21,7 +21,10 @@ val Error40 = Color(0xFFBA1A1A)
 val Error80 = Color(0xFFFFB4AB)
 val Error90 = Color(0xFFFFDAD6)
 
-// Keyboard surface colors
+// Keyboard colors
 val KeyboardBackground = Color(0xFF1C1C1E)
 val KeyBackground = Color(0xFF2C2C2E)
+val ActionKeyBackground = Color(0xFF3A3A3C)
+val ShiftActiveBackground = Color(0xFF6750A4)
 val KeyText = Color(0xFFFFFFFF)
+val KeyTextDim = Color(0xFFAAAAAA)

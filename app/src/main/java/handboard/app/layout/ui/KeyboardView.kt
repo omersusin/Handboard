@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import handboard.app.core.theme.KeyboardBackground
@@ -25,8 +24,6 @@ fun KeyboardView(
     onEnter: () -> Unit
 ) {
     val state = remember { KeyboardState() }
-    val scope = rememberCoroutineScope()
-    val backspaceHandler = remember { BackspaceHandler(scope) }
     val layout = layoutSwitcher.currentLayout
 
     val currentRows = when (state.currentLayer) {
@@ -63,6 +60,7 @@ fun KeyboardView(
                         KeyView(
                             keyData = keyData,
                             isShifted = state.shouldUpperCase,
+                            isCapsLock = state.isCapsLock,
                             onClick = {
                                 handleKeyPress(
                                     keyData = keyData,
@@ -71,13 +69,7 @@ fun KeyboardView(
                                     onBackspace = onBackspace,
                                     onEnter = onEnter
                                 )
-                            },
-                            onLongPressStart = if (keyData.action is KeyAction.Backspace) {
-                                { backspaceHandler.startRepeating(onBackspace) }
-                            } else null,
-                            onLongPressEnd = if (keyData.action is KeyAction.Backspace) {
-                                { backspaceHandler.stopRepeating() }
-                            } else null
+                            }
                         )
                     }
                 }

@@ -1,12 +1,4 @@
 <resources>
     <string name="app_name">HandBoard</string>
     <string name="subtype_en_us">English (US)</string>
-    <string name="welcome_title">Welcome to HandBoard</string>
-    <string name="welcome_subtitle">One-handed keyboard for everyone</string>
-    <string name="step1_title">Enable HandBoard</string>
-    <string name="step1_desc">Open keyboard settings and enable HandBoard</string>
-    <string name="step1_button">Open Settings</string>
-    <string name="step2_title">Select HandBoard</string>
-    <string name="step2_desc">Choose HandBoard as your active keyboard</string>
-    <string name="step2_button">Select Keyboard</string>
 </resources>

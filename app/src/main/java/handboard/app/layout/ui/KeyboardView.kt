@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,6 +20,8 @@ import handboard.app.layout.LayoutSwitcher
 @Composable
 fun KeyboardView(
     layoutSwitcher: LayoutSwitcher,
+    heightScale: Float = 1f,
+    hapticEnabled: Boolean = true,
     onTextInput: (String) -> Unit,
     onBackspace: () -> Unit,
     onEnter: () -> Unit
@@ -44,33 +47,32 @@ fun KeyboardView(
             }
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 3.dp)
-                .padding(bottom = 6.dp)
-        ) {
-            currentRows.forEach { row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 1.dp)
-                ) {
-                    row.forEach { keyData ->
-                        KeyView(
-                            keyData = keyData,
-                            isShifted = state.shouldUpperCase,
-                            isCapsLock = state.isCapsLock,
-                            onClick = {
-                                handleKeyPress(
-                                    keyData = keyData,
-                                    state = state,
-                                    onTextInput = onTextInput,
-                                    onBackspace = onBackspace,
-                                    onEnter = onEnter
-                                )
-                            }
-                        )
+        key(layoutSwitcher.currentLayoutName, state.currentLayer) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 3.dp)
+                    .padding(bottom = 6.dp)
+            ) {
+                currentRows.forEachIndexed { rowIndex, row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 1.dp)
+                    ) {
+                        row.forEachIndexed { colIndex, keyData ->
+                            KeyView(
+                                modifier = Modifier.weight(keyData.widthWeight),
+                                keyData = keyData,
+                                isShifted = state.shouldUpperCase,
+                                isCapsLock = state.isCapsLock,
+                                heightScale = heightScale,
+                                hapticEnabled = hapticEnabled,
+                                onClick = {
+                                    handleKeyPress(keyData, state, onTextInput, onBackspace, onEnter)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -87,11 +89,7 @@ private fun handleKeyPress(
 ) {
     when (val action = keyData.action) {
         is KeyAction.Text -> {
-            val text = if (state.shouldUpperCase) {
-                action.char.uppercase()
-            } else {
-                action.char
-            }
+            val text = if (state.shouldUpperCase) action.char.uppercase() else action.char
             onTextInput(text)
             state.onTextCommitted()
         }

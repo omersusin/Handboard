@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -22,6 +23,7 @@ fun KeyboardView(
     layoutSwitcher: LayoutSwitcher,
     heightScale: Float = 1f,
     hapticEnabled: Boolean = true,
+    suggestionBar: (@Composable () -> Unit)? = null,
     onTextInput: (String) -> Unit,
     onBackspace: () -> Unit,
     onEnter: () -> Unit
@@ -37,8 +39,13 @@ fun KeyboardView(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .wrapContentHeight()
             .background(KeyboardBackground)
     ) {
+        // Suggestion bar slot
+        suggestionBar?.invoke()
+
+        // Layout toolbar
         LayoutToolbar(
             currentLayoutName = layoutSwitcher.currentLayoutName,
             onSwitchLayout = {
@@ -47,20 +54,22 @@ fun KeyboardView(
             }
         )
 
+        // Keys
         key(layoutSwitcher.currentLayoutName, state.currentLayer) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .wrapContentHeight()
                     .padding(horizontal = 3.dp)
-                    .padding(bottom = 6.dp)
+                    .padding(bottom = 8.dp)
             ) {
-                currentRows.forEachIndexed { rowIndex, row ->
+                currentRows.forEach { row ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 1.dp)
                     ) {
-                        row.forEachIndexed { colIndex, keyData ->
+                        row.forEach { keyData ->
                             KeyView(
                                 modifier = Modifier.weight(keyData.widthWeight),
                                 keyData = keyData,

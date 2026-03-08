@@ -3,7 +3,6 @@ package handboard.app.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import handboard.app.layout.LayoutRegistry
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +51,9 @@ fun SettingsScreen(
     val alignment by preferencesManager.keyboardAlignment.collectAsState(initial = 1)
     val layoutName by preferencesManager.selectedLayout.collectAsState(initial = "QWERTY")
     val haptic by preferencesManager.hapticEnabled.collectAsState(initial = true)
+    val suggestionCount by preferencesManager.suggestionCount.collectAsState(initial = 3)
+    val predictionsEnabled by preferencesManager.predictionsEnabled.collectAsState(initial = true)
+    val bottomPadding by preferencesManager.bottomPadding.collectAsState(initial = 0)
 
     Scaffold(
         topBar = {
@@ -95,10 +98,7 @@ fun SettingsScreen(
 
             // Keyboard Size
             SectionCard(title = "Size") {
-                Text(
-                    text = "Height: ${"%.1f".format(heightScale)}x",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("Height: ${"%.1f".format(heightScale)}x", style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = heightScale,
                     onValueChange = { scope.launch { preferencesManager.setKeyboardHeight(it) } },
@@ -108,10 +108,7 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                Text(
-                    text = "Width: ${widthPercent}%",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("Width: ${widthPercent}%", style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = widthPercent.toFloat(),
                     onValueChange = { scope.launch { preferencesManager.setKeyboardWidth(it.toInt()) } },
@@ -135,6 +132,54 @@ fun SettingsScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+            }
+
+            // Bottom Padding
+            SectionCard(title = "Bottom Padding") {
+                Text(
+                    "Extra bottom padding: ${bottomPadding}dp",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Increase if keyboard is cut off by navigation bar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = bottomPadding.toFloat(),
+                    onValueChange = { scope.launch { preferencesManager.setBottomPadding(it.roundToInt()) } },
+                    valueRange = 0f..60f,
+                    steps = 11
+                )
+            }
+
+            // Predictions
+            SectionCard(title = "Predictions") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Word Predictions", style = MaterialTheme.typography.bodyLarge)
+                    Switch(
+                        checked = predictionsEnabled,
+                        onCheckedChange = { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
+                    )
+                }
+
+                if (predictionsEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Suggestions: $suggestionCount",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Slider(
+                        value = suggestionCount.toFloat(),
+                        onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } },
+                        valueRange = 1f..5f,
+                        steps = 3
+                    )
                 }
             }
 

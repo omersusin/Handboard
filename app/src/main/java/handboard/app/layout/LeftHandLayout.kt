@@ -22,31 +22,34 @@ object LeftHandLayout {
         style = KeyStyle.SPECIAL
     )
 
-    // Left hand: mirror of right hand layout
+    // Left Hand: 5 columns, QWERTY order preserved
+    // Backspace & Enter on left side (left thumb reach)
     val layout = KeyboardLayout(
         name = "Left Hand",
         letterRows = listOf(
-            listOf(text("y"), text("t"), text("r"), text("e"), text("w"), text("q")),
-            listOf(text("s"), text("a"), text("p"), text("o"), text("i"), text("u")),
-            listOf(text("k"), text("j"), text("h"), text("g"), text("f"), text("d")),
-            listOf(action("⌫", KeyAction.Backspace), text("c"), text("x"), text("z"), text("l"), action("⇧", KeyAction.Shift)),
-            listOf(text(","), text("m"), text("n"), text("b"), text("v"), special("123", KeyAction.SwitchToSymbols)),
+            listOf(text("q"), text("w"), text("e"), text("r"), text("t")),
+            listOf(text("y"), text("u"), text("i"), text("o"), text("p")),
+            listOf(text("a"), text("s"), text("d"), text("f"), text("g")),
+            listOf(action("⌫", KeyAction.Backspace), text("h"), text("j"), text("k"), text("l")),
+            listOf(text("z"), text("x"), text("c"), text("v"), action("⇧", KeyAction.Shift)),
+            listOf(text(","), text("b"), text("n"), text("m"), special("123", KeyAction.SwitchToSymbols)),
             listOf(
-                action("↵", KeyAction.Enter, 1.5f),
+                action("↵", KeyAction.Enter),
                 text("."),
-                special("space", KeyAction.Space, 3.5f)
+                special("space", KeyAction.Space, 3f)
             )
         ),
         symbolRows = listOf(
-            listOf(text("6"), text("5"), text("4"), text("3"), text("2"), text("1")),
-            listOf(text("#"), text("@"), text("0"), text("9"), text("8"), text("7")),
-            listOf(text("="), text("+"), text("-"), text("&"), text("%"), text("\$")),
-            listOf(action("⌫", KeyAction.Backspace), text(")"), text("("), text("?"), text("!"), action("⇧", KeyAction.Shift)),
-            listOf(text("/"), text(";"), text(":"), text("'"), text("\""), special("ABC", KeyAction.SwitchToLetters)),
+            listOf(text("1"), text("2"), text("3"), text("4"), text("5")),
+            listOf(text("6"), text("7"), text("8"), text("9"), text("0")),
+            listOf(text("@"), text("#"), text("\$"), text("%"), text("&")),
+            listOf(text("("), text(")"), text("="), text("+"), text("-")),
+            listOf(action("⌫", KeyAction.Backspace), text(":"), text("/"), text("?"), text("!")),
+            listOf(text(","), text(";"), text("'"), text("\""), special("ABC", KeyAction.SwitchToLetters)),
             listOf(
-                action("↵", KeyAction.Enter, 1.5f),
+                action("↵", KeyAction.Enter),
                 text("."),
-                special("space", KeyAction.Space, 3.5f)
+                special("space", KeyAction.Space, 3f)
             )
         )
     )

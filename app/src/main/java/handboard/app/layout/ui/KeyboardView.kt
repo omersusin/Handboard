@@ -7,23 +7,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import handboard.app.core.theme.KeyboardBackground
 import handboard.app.layout.KeyAction
 import handboard.app.layout.KeyData
 import handboard.app.layout.KeyboardLayer
-import handboard.app.layout.KeyboardLayout
 import handboard.app.layout.KeyboardState
+import handboard.app.layout.LayoutSwitcher
 
 @Composable
 fun KeyboardView(
-    layout: KeyboardLayout,
+    layoutSwitcher: LayoutSwitcher,
     onTextInput: (String) -> Unit,
     onBackspace: () -> Unit,
     onEnter: () -> Unit
 ) {
     val state = remember { KeyboardState() }
+    val scope = rememberCoroutineScope()
+    val backspaceHandler = remember { BackspaceHandler(scope) }
+    val layout = layoutSwitcher.currentLayout
 
     val currentRows = when (state.currentLayer) {
         KeyboardLayer.LETTERS -> layout.letterRows
@@ -34,28 +38,48 @@ fun KeyboardView(
         modifier = Modifier
             .fillMaxWidth()
             .background(KeyboardBackground)
-            .padding(horizontal = 3.dp, vertical = 6.dp)
     ) {
-        currentRows.forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 1.dp)
-            ) {
-                row.forEach { keyData ->
-                    KeyView(
-                        keyData = keyData,
-                        isShifted = state.shouldUpperCase,
-                        onClick = {
-                            handleKeyPress(
-                                keyData = keyData,
-                                state = state,
-                                onTextInput = onTextInput,
-                                onBackspace = onBackspace,
-                                onEnter = onEnter
-                            )
-                        }
-                    )
+        LayoutToolbar(
+            currentLayoutName = layoutSwitcher.currentLayoutName,
+            onSwitchLayout = {
+                layoutSwitcher.nextLayout()
+                state.switchToLetters()
+            }
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 3.dp)
+                .padding(bottom = 6.dp)
+        ) {
+            currentRows.forEach { row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 1.dp)
+                ) {
+                    row.forEach { keyData ->
+                        KeyView(
+                            keyData = keyData,
+                            isShifted = state.shouldUpperCase,
+                            onClick = {
+                                handleKeyPress(
+                                    keyData = keyData,
+                                    state = state,
+                                    onTextInput = onTextInput,
+                                    onBackspace = onBackspace,
+                                    onEnter = onEnter
+                                )
+                            },
+                            onLongPressStart = if (keyData.action is KeyAction.Backspace) {
+                                { backspaceHandler.startRepeating(onBackspace) }
+                            } else null,
+                            onLongPressEnd = if (keyData.action is KeyAction.Backspace) {
+                                { backspaceHandler.stopRepeating() }
+                            } else null
+                        )
+                    }
                 }
             }
         }

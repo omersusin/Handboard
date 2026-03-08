@@ -10,13 +10,14 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import handboard.app.core.theme.HandBoardTheme
-import handboard.app.layout.QwertyLayout
+import handboard.app.layout.LayoutSwitcher
 import handboard.app.layout.ui.KeyboardView
 
 class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val layoutSwitcher = LayoutSwitcher()
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val savedStateRegistry: SavedStateRegistry
@@ -43,7 +44,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         return createComposeView(this, this) {
             HandBoardTheme(darkTheme = true) {
                 KeyboardView(
-                    layout = QwertyLayout.layout,
+                    layoutSwitcher = layoutSwitcher,
                     onTextInput = { text ->
                         currentInputConnection?.commitText(text, 1)
                     },

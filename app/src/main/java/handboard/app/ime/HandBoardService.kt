@@ -45,9 +45,19 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
     }
 
-    override fun onCreateInputView(): View {
+    override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        return createComposeKeyboardView(this, this, this) {
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+    }
+
+    override fun onCreateInputView(): View {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        return createComposeView(this, this) {
             HandBoardTheme(darkTheme = true) {
                 PlaceholderKeyboard(
                     onKeyPress = { text ->
@@ -88,7 +98,6 @@ fun PlaceholderKeyboard(
             .background(KeyboardBackground)
             .padding(horizontal = 4.dp, vertical = 8.dp)
     ) {
-        // Letter rows
         rows.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -111,7 +120,6 @@ fun PlaceholderKeyboard(
             }
         }
 
-        // Bottom row: backspace — space — enter
         Row(
             modifier = Modifier
                 .fillMaxWidth()

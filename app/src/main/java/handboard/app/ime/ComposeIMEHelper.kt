@@ -1,6 +1,7 @@
 package handboard.app.ime
 
-import android.content.Context
+import android.inputmethodservice.InputMethodService
+import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -9,13 +10,19 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-fun createComposeKeyboardView(
-    context: Context,
+fun InputMethodService.createComposeView(
     lifecycleOwner: LifecycleOwner,
     savedStateRegistryOwner: SavedStateRegistryOwner,
     content: @Composable () -> Unit
-): ComposeView {
-    return ComposeView(context).apply {
+): View {
+    // Set lifecycle on the IME window's decor view so Compose can find it
+    val decorView = window?.window?.decorView
+    decorView?.let {
+        it.setViewTreeLifecycleOwner(lifecycleOwner)
+        it.setViewTreeSavedStateRegistryOwner(savedStateRegistryOwner)
+    }
+
+    return ComposeView(this).apply {
         setViewCompositionStrategy(
             ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
         )

@@ -2,55 +2,38 @@ package handboard.app.layout
 
 object LeftHandLayout {
 
-    private fun text(char: String, width: Float = 1f) = KeyData(
-        label = char,
-        action = KeyAction.Text(char),
-        widthWeight = width
-    )
+    private fun t(c: String, w: Float = 1f) = KeyData(c, KeyAction.Text(c), w)
+    private fun a(l: String, a: KeyAction, w: Float = 1.3f) = KeyData(l, a, w, KeyStyle.ACTION)
+    private fun s(l: String, a: KeyAction, w: Float = 1.3f) = KeyData(l, a, w, KeyStyle.SPECIAL)
 
-    private fun action(label: String, action: KeyAction, width: Float = 1.3f) = KeyData(
-        label = label,
-        action = action,
-        widthWeight = width,
-        style = KeyStyle.ACTION
-    )
-
-    private fun special(label: String, action: KeyAction, width: Float = 1.3f) = KeyData(
-        label = label,
-        action = action,
-        widthWeight = width,
-        style = KeyStyle.SPECIAL
-    )
-
-    // Left Hand: 5 columns, QWERTY order preserved
-    // Backspace & Enter on left side (left thumb reach)
     val layout = KeyboardLayout(
         name = "Left Hand",
         letterRows = listOf(
-            listOf(text("q"), text("w"), text("e"), text("r"), text("t")),
-            listOf(text("y"), text("u"), text("i"), text("o"), text("p")),
-            listOf(text("a"), text("s"), text("d"), text("f"), text("g")),
-            listOf(action("⌫", KeyAction.Backspace), text("h"), text("j"), text("k"), text("l")),
-            listOf(text("z"), text("x"), text("c"), text("v"), action("⇧", KeyAction.Shift)),
-            listOf(text(","), text("b"), text("n"), text("m"), special("123", KeyAction.SwitchToSymbols)),
-            listOf(
-                action("↵", KeyAction.Enter),
-                text("."),
-                special("space", KeyAction.Space, 3f)
-            )
+            listOf(t("q"), t("w"), t("e"), t("r"), t("t")),
+            listOf(t("y"), t("u"), t("i"), t("o"), t("p")),
+            listOf(t("a"), t("s"), t("d"), t("f"), t("g")),
+            listOf(a("⌫", KeyAction.Backspace), t("h"), t("j"), t("k"), t("l")),
+            listOf(t("z"), t("x"), t("c"), t("v"), a("⇧", KeyAction.Shift)),
+            listOf(t(","), t("b"), t("n"), t("m"), s("123", KeyAction.SwitchToSymbols)),
+            listOf(a("↵", KeyAction.Enter), t("."), s("space", KeyAction.Space, 3f))
         ),
         symbolRows = listOf(
-            listOf(text("1"), text("2"), text("3"), text("4"), text("5")),
-            listOf(text("6"), text("7"), text("8"), text("9"), text("0")),
-            listOf(text("@"), text("#"), text("\$"), text("%"), text("&")),
-            listOf(text("("), text(")"), text("="), text("+"), text("-")),
-            listOf(action("⌫", KeyAction.Backspace), text(":"), text("/"), text("?"), text("!")),
-            listOf(text(","), text(";"), text("'"), text("\""), special("ABC", KeyAction.SwitchToLetters)),
-            listOf(
-                action("↵", KeyAction.Enter),
-                text("."),
-                special("space", KeyAction.Space, 3f)
-            )
+            listOf(t("1"), t("2"), t("3"), t("4"), t("5")),
+            listOf(t("6"), t("7"), t("8"), t("9"), t("0")),
+            listOf(t("@"), t("#"), t("\$"), t("%"), t("&")),
+            listOf(t("("), t(")"), t("="), t("+"), t("-")),
+            listOf(a("⌫", KeyAction.Backspace), t("/"), t("?"), t("!"), a("=\\<", KeyAction.Shift)),
+            listOf(t(";"), t(":"), t("'"), t("\""), s("ABC", KeyAction.SwitchToLetters)),
+            listOf(a("↵", KeyAction.Enter), t("."), s("space", KeyAction.Space, 3f))
+        ),
+        symbolRows2 = listOf(
+            listOf(t("~"), t("`"), t("|"), t("\\"), t("^")),
+            listOf(t("{"), t("}"), t("["), t("]"), t("°")),
+            listOf(t("©"), t("®"), t("™"), t("€"), t("£")),
+            listOf(t("±"), t("≠"), t("÷"), t("×"), t("¥")),
+            listOf(a("⌫", KeyAction.Backspace), t("«"), t("»"), t("§"), a("123", KeyAction.Shift)),
+            listOf(t("•"), t("¶"), t("¢"), t("≈"), s("ABC", KeyAction.SwitchToLetters)),
+            listOf(a("↵", KeyAction.Enter), t("."), s("space", KeyAction.Space, 3f))
         )
     )
 }

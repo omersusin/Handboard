@@ -31,33 +31,32 @@ jobs:
       - name: Build Debug APK
         run: gradle assembleDebug
 
-      - name: Get version tag
+      - name: Get tag
         id: tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk HandBoard-${{ steps.tag.outputs.VERSION }}.apk
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: "HandBoard ${{ steps.tag.outputs.VERSION }}"
           body: |
             ## HandBoard ${{ steps.tag.outputs.VERSION }}
-            
+
             ### 📥 Install
             1. Download the APK below
             2. Install on your Android device
             3. Open HandBoard → Enable → Select as keyboard
-            
-            ### ✨ What's Included
+
+            ### ✨ Included
             - 4 keyboard layouts (QWERTY, Right Hand, Left Hand, Thumb)
-            - 3600+ emojis (Google emoji2 picker)
-            - Word prediction (Trie + Bigram)
-            - Clipboard history with image support
-            - Customizable size, position, layout
-            - Material You theming (Android 12+)
-            - Supports Android 7.0+
+            - 3600+ emojis (Google emoji2)
+            - Word prediction with persistent learning
+            - Clipboard history (opt-in)
+            - Customizable size, position, theme
+            - Android 7.0+ support
           files: HandBoard-${{ steps.tag.outputs.VERSION }}.apk
           draft: false
           prerelease: false

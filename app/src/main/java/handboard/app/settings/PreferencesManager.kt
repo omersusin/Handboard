@@ -25,6 +25,8 @@ class PreferencesManager(private val context: Context) {
         private val KEY_SUGGESTIONS = intPreferencesKey("suggestion_count")
         private val KEY_PREDICTIONS = booleanPreferencesKey("predictions_enabled")
         private val KEY_BOTTOM_PADDING = intPreferencesKey("bottom_padding")
+        private val KEY_CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
+        private val KEY_FOLLOW_SYSTEM_THEME = booleanPreferencesKey("follow_system_theme")
     }
 
     val keyboardHeight: Flow<Float> = context.dataStore.data.map { it[KEY_HEIGHT] ?: 1.0f }
@@ -35,13 +37,17 @@ class PreferencesManager(private val context: Context) {
     val suggestionCount: Flow<Int> = context.dataStore.data.map { it[KEY_SUGGESTIONS] ?: 3 }
     val predictionsEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_PREDICTIONS] ?: true }
     val bottomPadding: Flow<Int> = context.dataStore.data.map { it[KEY_BOTTOM_PADDING] ?: 0 }
+    val clipboardEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CLIPBOARD_ENABLED] ?: false }
+    val followSystemTheme: Flow<Boolean> = context.dataStore.data.map { it[KEY_FOLLOW_SYSTEM_THEME] ?: false }
 
-    suspend fun setKeyboardHeight(value: Float) { context.dataStore.edit { it[KEY_HEIGHT] = value } }
-    suspend fun setKeyboardWidth(value: Int) { context.dataStore.edit { it[KEY_WIDTH] = value } }
-    suspend fun setKeyboardAlignment(value: Int) { context.dataStore.edit { it[KEY_ALIGNMENT] = value } }
-    suspend fun setSelectedLayout(value: String) { context.dataStore.edit { it[KEY_LAYOUT] = value } }
-    suspend fun setHapticEnabled(value: Boolean) { context.dataStore.edit { it[KEY_HAPTIC] = value } }
-    suspend fun setSuggestionCount(value: Int) { context.dataStore.edit { it[KEY_SUGGESTIONS] = value } }
-    suspend fun setPredictionsEnabled(value: Boolean) { context.dataStore.edit { it[KEY_PREDICTIONS] = value } }
-    suspend fun setBottomPadding(value: Int) { context.dataStore.edit { it[KEY_BOTTOM_PADDING] = value } }
+    suspend fun setKeyboardHeight(v: Float) { context.dataStore.edit { it[KEY_HEIGHT] = v } }
+    suspend fun setKeyboardWidth(v: Int) { context.dataStore.edit { it[KEY_WIDTH] = v } }
+    suspend fun setKeyboardAlignment(v: Int) { context.dataStore.edit { it[KEY_ALIGNMENT] = v } }
+    suspend fun setSelectedLayout(v: String) { context.dataStore.edit { it[KEY_LAYOUT] = v } }
+    suspend fun setHapticEnabled(v: Boolean) { context.dataStore.edit { it[KEY_HAPTIC] = v } }
+    suspend fun setSuggestionCount(v: Int) { context.dataStore.edit { it[KEY_SUGGESTIONS] = v } }
+    suspend fun setPredictionsEnabled(v: Boolean) { context.dataStore.edit { it[KEY_PREDICTIONS] = v } }
+    suspend fun setBottomPadding(v: Int) { context.dataStore.edit { it[KEY_BOTTOM_PADDING] = v } }
+    suspend fun setClipboardEnabled(v: Boolean) { context.dataStore.edit { it[KEY_CLIPBOARD_ENABLED] = v } }
+    suspend fun setFollowSystemTheme(v: Boolean) { context.dataStore.edit { it[KEY_FOLLOW_SYSTEM_THEME] = v } }
 }

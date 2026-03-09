@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,10 +25,13 @@ import handboard.app.layout.KeyData
 import handboard.app.layout.KeyboardLayer
 import handboard.app.layout.KeyboardState
 import handboard.app.layout.LayoutSwitcher
+import handboard.app.settings.PreferencesManager
+import kotlinx.coroutines.launch
 
 @Composable
 fun KeyboardView(
     layoutSwitcher: LayoutSwitcher,
+    preferencesManager: PreferencesManager,
     heightScale: Float = 1f,
     hapticEnabled: Boolean = true,
     clipboardHistory: ClipboardHistory? = null,
@@ -41,10 +45,14 @@ fun KeyboardView(
     val state = remember { KeyboardState() }
     val layout = layoutSwitcher.currentLayout
     var currentPanel by remember { mutableStateOf(KeyboardPanel.KEYBOARD) }
+    val scope = rememberCoroutineScope()
+
+    val hasSymbolRows2 = layout.symbolRows2.isNotEmpty()
 
     val currentRows = when (state.currentLayer) {
         KeyboardLayer.LETTERS -> layout.letterRows
         KeyboardLayer.SYMBOLS -> layout.symbolRows
+        KeyboardLayer.SYMBOLS2 -> if (hasSymbolRows2) layout.symbolRows2 else layout.symbolRows
     }
 
     Column(
@@ -53,12 +61,10 @@ fun KeyboardView(
             .wrapContentHeight()
             .background(KeyboardBackground)
     ) {
-        // Suggestion bar (only in keyboard panel)
         if (currentPanel == KeyboardPanel.KEYBOARD) {
             suggestionBar?.invoke()
         }
 
-        // Toolbar
         LayoutToolbar(
             currentLayoutName = layoutSwitcher.currentLayoutName,
             currentPanel = currentPanel,
@@ -66,11 +72,14 @@ fun KeyboardView(
                 layoutSwitcher.nextLayout()
                 state.switchToLetters()
                 currentPanel = KeyboardPanel.KEYBOARD
+                // Persist layout selection (#7)
+                scope.launch {
+                    preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName)
+                }
             },
             onSwitchPanel = { panel -> currentPanel = panel }
         )
 
-        // Panel content
         when (currentPanel) {
             KeyboardPanel.KEYBOARD -> {
                 key(layoutSwitcher.currentLayoutName, state.currentLayer) {
@@ -93,10 +102,14 @@ fun KeyboardView(
                                         keyData = keyData,
                                         isShifted = state.shouldUpperCase,
                                         isCapsLock = state.isCapsLock,
+                                        currentLayer = state.currentLayer,
                                         heightScale = heightScale,
                                         hapticEnabled = hapticEnabled,
                                         onClick = {
-                                            handleKeyPress(keyData, state, onTextInput, onBackspace, onEnter)
+                                            handleKeyPress(
+                                                keyData, state, hasSymbolRows2,
+                                                onTextInput, onBackspace, onEnter
+                                            )
                                         }
                                     )
                                 }
@@ -108,7 +121,7 @@ fun KeyboardView(
             KeyboardPanel.EMOJI -> {
                 EmojiView(
                     heightScale = heightScale,
-                    onEmojiClick = { emoji -> onEmojiInput(emoji) },
+                    onEmojiClick = { onEmojiInput(it) },
                     onBackspace = onBackspace
                 )
             }
@@ -117,8 +130,8 @@ fun KeyboardView(
                     ClipboardView(
                         clipboardHistory = clipboardHistory,
                         heightScale = heightScale,
-                        onPasteText = { text -> onTextInput(text) },
-                        onPasteImage = { item -> onPasteImage(item) },
+                        onPasteText = { onTextInput(it) },
+                        onPasteImage = { onPasteImage(it) },
                         onClearAll = { clipboardHistory.clearAll() }
                     )
                 }
@@ -130,13 +143,16 @@ fun KeyboardView(
 private fun handleKeyPress(
     keyData: KeyData,
     state: KeyboardState,
+    hasSymbolRows2: Boolean,
     onTextInput: (String) -> Unit,
     onBackspace: () -> Unit,
     onEnter: () -> Unit
 ) {
     when (val action = keyData.action) {
         is KeyAction.Text -> {
-            val text = if (state.shouldUpperCase) action.char.uppercase() else action.char
+            val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) {
+                action.char.uppercase()
+            } else action.char
             onTextInput(text)
             state.onTextCommitted()
         }
@@ -146,7 +162,7 @@ private fun handleKeyPress(
         }
         KeyAction.Backspace -> onBackspace()
         KeyAction.Enter -> onEnter()
-        KeyAction.Shift -> state.toggleShift()
+        KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
         KeyAction.SwitchToSymbols -> state.switchToSymbols()
         KeyAction.SwitchToLetters -> state.switchToLetters()
     }

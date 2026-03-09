@@ -15,6 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +45,6 @@ fun LayoutToolbar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: layout name or panel name
         Text(
             text = when (currentPanel) {
                 KeyboardPanel.KEYBOARD -> currentLayoutName
@@ -55,20 +58,20 @@ fun LayoutToolbar(
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // ABC button (when not on keyboard)
             if (currentPanel != KeyboardPanel.KEYBOARD) {
                 ToolbarButton(
                     content = { Text("ABC", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                     isActive = false,
+                    description = "Switch to keyboard",
                     onClick = { onSwitchPanel(KeyboardPanel.KEYBOARD) }
                 )
                 Spacer(Modifier.width(4.dp))
             }
 
-            // Clipboard button
             ToolbarButton(
                 content = { ClipboardIcon(tint = KeyText, size = 18.dp) },
                 isActive = currentPanel == KeyboardPanel.CLIPBOARD,
+                description = "Clipboard",
                 onClick = {
                     onSwitchPanel(
                         if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD
@@ -79,10 +82,10 @@ fun LayoutToolbar(
 
             Spacer(Modifier.width(4.dp))
 
-            // Emoji button
             ToolbarButton(
                 content = { Text("😊", fontSize = 16.sp) },
                 isActive = currentPanel == KeyboardPanel.EMOJI,
+                description = "Emoji",
                 onClick = {
                     onSwitchPanel(
                         if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD
@@ -93,10 +96,10 @@ fun LayoutToolbar(
 
             Spacer(Modifier.width(4.dp))
 
-            // Layout switch button
             ToolbarButton(
                 content = { GlobeIcon(tint = KeyText, size = 18.dp) },
                 isActive = false,
+                description = "Switch layout",
                 onClick = onSwitchLayout
             )
         }
@@ -107,6 +110,7 @@ fun LayoutToolbar(
 private fun ToolbarButton(
     content: @Composable () -> Unit,
     isActive: Boolean,
+    description: String,
     onClick: () -> Unit
 ) {
     Box(
@@ -114,6 +118,10 @@ private fun ToolbarButton(
             .clip(RoundedCornerShape(6.dp))
             .background(if (isActive) ShiftActiveBackground else ActionKeyBackground)
             .clickable(onClick = onClick)
+            .semantics {
+                contentDescription = description
+                role = Role.Button
+            }
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {

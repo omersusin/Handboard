@@ -3,7 +3,7 @@ package handboard.app.clipboard
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
-import android.os.Build
+import androidx.compose.runtime.mutableStateListOf
 
 data class ClipboardItem(
     val text: String? = null,
@@ -17,17 +17,24 @@ data class ClipboardItem(
 
 class ClipboardHistory(private val context: Context) {
 
-    private val items = mutableListOf<ClipboardItem>()
     private val maxItems = 20
     private var clipboardManager: ClipboardManager? = null
+    private var listener: ClipboardManager.OnPrimaryClipChangedListener? = null
+
+    // Observable state for Compose
+    val items = mutableStateListOf<ClipboardItem>()
 
     fun initialize() {
         clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboardManager?.addPrimaryClipChangedListener {
-            readCurrentClip()
-        }
-        // Read current clip on init
+        listener = ClipboardManager.OnPrimaryClipChangedListener { readCurrentClip() }
+        clipboardManager?.addPrimaryClipChangedListener(listener)
         readCurrentClip()
+    }
+
+    fun destroy() {
+        listener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
+        listener = null
+        clipboardManager = null
     }
 
     private fun readCurrentClip() {
@@ -39,25 +46,20 @@ class ClipboardHistory(private val context: Context) {
             val text = item.text?.toString()
             val uri = item.uri
 
-            // Determine if it's an image
             val description = clip.description
             val isImage = description != null &&
-                (0 until description.mimeTypeCount).any { i ->
-                    description.getMimeType(i)?.startsWith("image/") == true
+                (0 until description.mimeTypeCount).any {
+                    description.getMimeType(it)?.startsWith("image/") == true
                 }
 
             val clipItem = if (isImage && uri != null) {
-                val mimeType = if (description != null && description.mimeTypeCount > 0) {
-                    description.getMimeType(0) ?: "image/*"
-                } else "image/*"
-                ClipboardItem(text = text, imageUri = uri, mimeType = mimeType)
-            } else if (text != null && text.isNotBlank()) {
+                val mime = description?.getMimeType(0) ?: "image/*"
+                ClipboardItem(text = text, imageUri = uri, mimeType = mime)
+            } else if (!text.isNullOrBlank()) {
                 ClipboardItem(text = text)
-            } else {
-                return
-            }
+            } else return
 
-            // Don't add duplicates
+            // Avoid duplicates
             if (items.isNotEmpty()) {
                 val last = items.first()
                 if (last.text == clipItem.text && last.imageUri == clipItem.imageUri) return
@@ -65,19 +67,10 @@ class ClipboardHistory(private val context: Context) {
 
             items.add(0, clipItem)
             if (items.size > maxItems) items.removeAt(items.lastIndex)
-
-        } catch (_: Exception) {
-            // Clipboard access can fail on some devices
-        }
+        } catch (_: Exception) { }
     }
 
-    fun getItems(): List<ClipboardItem> = items.toList()
+    fun removeItem(item: ClipboardItem) { items.remove(item) }
 
-    fun removeItem(item: ClipboardItem) {
-        items.remove(item)
-    }
-
-    fun clearAll() {
-        items.clear()
-    }
+    fun clearAll() { items.clear() }
 }

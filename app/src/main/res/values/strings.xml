@@ -1,4 +1,60 @@
 <resources>
     <string name="app_name">HandBoard</string>
     <string name="subtype_en_us">English (US)</string>
+
+    <!-- Setup -->
+    <string name="welcome_title">HandBoard</string>
+    <string name="welcome_subtitle">One-handed keyboard for everyone</string>
+    <string name="step1_title">Enable HandBoard</string>
+    <string name="step1_desc">Open keyboard settings and enable HandBoard</string>
+    <string name="step1_button">Open Settings</string>
+    <string name="step2_title">Select HandBoard</string>
+    <string name="step2_desc">Choose HandBoard as your active keyboard</string>
+    <string name="step2_button">Select Keyboard</string>
+    <string name="keyboard_settings">Keyboard Settings</string>
+    <string name="status_enabled">HandBoard is enabled</string>
+    <string name="status_not_enabled">HandBoard is not enabled</string>
+    <string name="status_selected">HandBoard is your active keyboard</string>
+    <string name="status_not_selected">HandBoard is not selected</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="section_layout">Layout</string>
+    <string name="section_size">Size</string>
+    <string name="section_position">Position</string>
+    <string name="section_padding">Bottom Padding</string>
+    <string name="section_predictions">Predictions</string>
+    <string name="section_feedback">Feedback</string>
+    <string name="section_clipboard">Clipboard</string>
+    <string name="section_theme">Theme</string>
+    <string name="section_about">About</string>
+    <string name="height_label">Height: %1$.1fx</string>
+    <string name="width_label">Width: %1$d%%</string>
+    <string name="padding_label">Extra bottom padding: %1$ddp</string>
+    <string name="padding_desc">Increase if keyboard is cut off by navigation bar</string>
+    <string name="position_left">Left</string>
+    <string name="position_center">Center</string>
+    <string name="position_right">Right</string>
+    <string name="predictions_toggle">Word Predictions</string>
+    <string name="suggestions_label">Suggestions: %1$d</string>
+    <string name="haptic_toggle">Haptic Feedback</string>
+    <string name="clipboard_toggle">Clipboard History</string>
+    <string name="clipboard_desc">Stores copied text for quick pasting</string>
+    <string name="theme_follow_system">Follow System Theme</string>
+    <string name="theme_desc">Uses dark theme when disabled</string>
+    <string name="about_version">HandBoard v1.0.0</string>
+    <string name="about_desc">One-handed keyboard for everyone</string>
+
+    <!-- Keyboard -->
+    <string name="key_space">space</string>
+    <string name="key_backspace">Backspace</string>
+    <string name="key_enter">Enter</string>
+    <string name="key_shift">Shift</string>
+    <string name="key_caps_lock">Caps Lock</string>
+    <string name="clipboard_title">Clipboard</string>
+    <string name="clipboard_empty">Clipboard is empty</string>
+    <string name="clipboard_clear">Clear All</string>
+    <string name="clipboard_image">Image</string>
+    <string name="emoji_title">Emoji</string>
+    <string name="no_recent_emoji">No recent emojis</string>
 </resources>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Hand/keyboard icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 L74,30 Q78,30 78,34 L78,62 Q78,66 74,66 L34,66 Q30,66 30,62 L30,34 Q30,30 34,30 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M38,38 L42,38 L42,42 L38,42 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M46,38 L50,38 L50,42 L46,42 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M54,38 L58,38 L58,42 L54,42 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M62,38 L66,38 L66,42 L62,42 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M70,38 L74,38 L74,42 L70,42 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M40,46 L44,46 L44,50 L40,50 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M48,46 L52,46 L52,50 L48,50 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M56,46 L60,46 L60,50 L56,50 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M64,46 L68,46 L68,50 L64,50 Z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M44,54 L64,54 L64,58 L44,58 Z" />
+    <!-- Finger pointing -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,66 L54,78 Q54,80 52,80 Q50,80 50,78 L50,66 Z" />
+</vector>

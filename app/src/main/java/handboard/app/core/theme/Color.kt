@@ -2,13 +2,24 @@ package handboard.app.core.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Default Fallback Colors
-val Purple80 = Color(0xFFD0BCFF)
+// Material You default purple palette
+val Purple10 = Color(0xFF21005D)
 val Purple20 = Color(0xFF381E72)
 val Purple30 = Color(0xFF4F378B)
+val Purple40 = Color(0xFF6750A4)
+val Purple80 = Color(0xFFD0BCFF)
 val Purple90 = Color(0xFFEADDFF)
-val Error80 = Color(0xFFFFB4AB)
+val Purple99 = Color(0xFFFFFBFE)
+
+val PurpleGrey30 = Color(0xFF332D41)
+val PurpleGrey50 = Color(0xFF605D66)
+val PurpleGrey80 = Color(0xFFC9C5D0)
+val PurpleGrey90 = Color(0xFFE6E0EC)
+
 val Error30 = Color(0xFF93000A)
+val Error40 = Color(0xFFBA1A1A)
+val Error80 = Color(0xFFFFB4AB)
+val Error90 = Color(0xFFFFDAD6)
 
 data class KeyboardColors(
     val background: Color,
@@ -60,22 +71,16 @@ var KeyTextDim = DarkKeyboardColors.keyTextDim; private set
 var NumberRowBackground = DarkKeyboardColors.numberRow; private set
 
 fun applyKeyboardTheme(themePref: String, isSystemDark: Boolean, dynamicPrimary: Color?) {
-    val isDark = when (themePref) {
-        "light" -> false
-        "dark", "amoled" -> true
-        else -> isSystemDark
-    }
-
     val base = when (themePref) {
         "amoled" -> AmoledKeyboardColors
         "light" -> LightKeyboardColors
+        "dark" -> DarkKeyboardColors
         else -> if (isSystemDark) DarkKeyboardColors else LightKeyboardColors
     }
 
     KeyboardBackground = base.background
     KeyBackground = base.keyBackground
     ActionKeyBackground = base.actionKeyBackground
-    // If Material You is active (dynamicPrimary exists), use it for shift/active keys
     ShiftActiveBackground = dynamicPrimary ?: base.shiftActive 
     KeyText = base.keyText
     KeyTextDim = base.keyTextDim

@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,7 +57,6 @@ fun TranslatePanel(
     var showSrcMenu by remember { mutableStateOf(false) }
     var showTrgMenu by remember { mutableStateOf(false) }
 
-    // Debounce Logic
     LaunchedEffect(sourceText, sourceLang, targetLang) {
         if (sourceText.isBlank()) {
             translatedText = ""
@@ -64,7 +65,7 @@ fun TranslatePanel(
         }
         isLoading = true
         error = null
-        delay(600) // Debounce
+        delay(600)
 
         if (sourceLang == targetLang && sourceLang != "auto") {
             translatedText = sourceText
@@ -73,32 +74,16 @@ fun TranslatePanel(
         }
 
         TranslationEngine.translate(sourceLang, targetLang, sourceText).fold(
-            onSuccess = {
-                translatedText = it
-                isLoading = false
-            },
-            onFailure = {
-                error = it.message
-                isLoading = false
-            }
+            onSuccess = { translatedText = it; isLoading = false },
+            onFailure = { error = it.message; isLoading = false }
         )
     }
 
     Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().background(KeyboardBackground).padding(8.dp)) {
-        
-        // Language Selectors
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            LangSelector(
-                label = TranslationLanguages.items[sourceLang] ?: sourceLang,
-                onClick = { showSrcMenu = !showSrcMenu },
-                modifier = Modifier.weight(1f)
-            )
+            LangSelector(label = TranslationLanguages.items[sourceLang] ?: sourceLang, onClick = { showSrcMenu = !showSrcMenu }, modifier = Modifier.weight(1f))
             Text(" ➔ ", color = KeyTextDim, modifier = Modifier.padding(horizontal = 8.dp).align(Alignment.CenterVertically))
-            LangSelector(
-                label = TranslationLanguages.items[targetLang] ?: targetLang,
-                onClick = { showTrgMenu = !showTrgMenu },
-                modifier = Modifier.weight(1f)
-            )
+            LangSelector(label = TranslationLanguages.items[targetLang] ?: targetLang, onClick = { showTrgMenu = !showTrgMenu }, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(10.dp)) {
                 Text("✕", color = KeyText)
@@ -107,26 +92,22 @@ fun TranslatePanel(
 
         Spacer(Modifier.height(8.dp))
 
-        // Input & Output
         if (showSrcMenu) {
             LangList(isSource = true, onSelect = { sourceLang = it; showSrcMenu = false })
         } else if (showTrgMenu) {
             LangList(isSource = false, onSelect = { targetLang = it; showTrgMenu = false })
         } else {
-            // Input Box
             Box(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(8.dp)) {
                 if (sourceText.isEmpty()) Text("Type to translate...", color = KeyTextDim, fontSize = 14.sp)
                 BasicTextField(
                     value = sourceText, onValueChange = { sourceText = it },
                     textStyle = TextStyle(color = KeyText, fontSize = 14.sp),
-                    cursorBrush = SolidColor(ShiftActiveBackground),
-                    modifier = Modifier.fillMaxWidth()
+                    cursorBrush = SolidColor(ShiftActiveBackground), modifier = Modifier.fillMaxWidth()
                 )
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // Output Box
             Box(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).padding(8.dp)) {
                 if (isLoading) {
                     CircularProgressIndicator(color = ShiftActiveBackground, modifier = Modifier.align(Alignment.Center).padding(4.dp))
@@ -155,11 +136,14 @@ private fun LangSelector(label: String, onClick: () -> Unit, modifier: Modifier 
 
 @Composable
 private fun LangList(isSource: Boolean, onSelect: (String) -> Unit) {
-    val items = if (isSource) TranslationLanguages.items else TranslationLanguages.items.filterKeys { it != "auto" }
-    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.fillMaxWidth().height(128.dp)) {
-        androidx.compose.foundation.lazy.items(items.toList()) { (code, name) ->
-            Box(modifier = Modifier.fillMaxWidth().clickable { onSelect(code) }.padding(12.dp)) {
-                Text(name, color = KeyText, fontSize = 14.sp)
+    // Convert Map.Entry to a Pair explicitly to avoid component() ambiguous errors
+    val mapItems = if (isSource) TranslationLanguages.items else TranslationLanguages.items.filterKeys { it != "auto" }
+    val listItems = mapItems.entries.map { Pair(it.key, it.value) }
+    
+    LazyColumn(modifier = Modifier.fillMaxWidth().height(128.dp)) {
+        items(listItems) { pair ->
+            Box(modifier = Modifier.fillMaxWidth().clickable { onSelect(pair.first) }.padding(12.dp)) {
+                Text(pair.second, color = KeyText, fontSize = 14.sp)
             }
         }
     }

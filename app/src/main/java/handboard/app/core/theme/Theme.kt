@@ -50,8 +50,11 @@ fun HandBoardTheme(
         else -> LightColorScheme
     }
 
-    // Sync keyboard colors with theme
-    SideEffect { applyKeyboardColors(darkTheme) }
+    // Apply the keyboard theme logic here to prevent "Unresolved reference"
+    SideEffect {
+        val themePref = if (darkTheme) "dark" else "light"
+        applyKeyboardTheme(themePref, darkTheme, colorScheme.primary)
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,

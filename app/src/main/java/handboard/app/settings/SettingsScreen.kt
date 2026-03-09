@@ -48,9 +48,12 @@ import handboard.app.layout.LayoutRegistry
 import handboard.app.layout.ui.BackArrowIcon
 import handboard.app.prediction.DictionaryManager
 import handboard.app.prediction.WordPredictor
+import handboard.app.prediction.AospDictConverter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +90,7 @@ fun SettingsScreen(
     var loadedWordCount by remember { mutableStateOf(0) }
     var isImporting by remember { mutableStateOf(false) }
     val predictor = remember { WordPredictor() }
+    val converter = remember { AospDictConverter(context) }
     
     LaunchedEffect(activeDicts, multilingualEnabled, dictId, dictManager) {
         withContext(Dispatchers.IO) {
@@ -100,13 +104,15 @@ fun SettingsScreen(
         if (uri != null) {
             isImporting = true
             scope.launch {
-                val success = dictManager.importAndConvertFile(uri)
-                if (success) {
-                    Toast.makeText(context, "Dictionary converted and imported successfully!", Toast.LENGTH_LONG).show()
-                    dictManager = DictionaryManager(context) 
-                } else {
-                    Toast.makeText(context, "Failed to read or convert dictionary.", Toast.LENGTH_LONG).show()
-                }
+                converter.convertAndSave(uri)
+                    .onSuccess { file ->
+                        val count = file.useLines { it.count() }
+                        Toast.makeText(context, "$count words imported successfully!", Toast.LENGTH_LONG).show()
+                        dictManager = DictionaryManager(context) 
+                    }
+                    .onFailure { error ->
+                        Toast.makeText(context, "Error: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
                 isImporting = false
             }
         }
@@ -171,7 +177,7 @@ fun SettingsScreen(
             Sec(stringResource(R.string.section_size)) { Text(stringResource(R.string.height_label, heightScale)); Slider(value = heightScale, onValueChange = { scope.launch { preferencesManager.setKeyboardHeight(it) } }, valueRange = 0.7f..1.5f, steps = 7); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.width_label, widthPercent)); Slider(value = widthPercent.toFloat(), onValueChange = { scope.launch { preferencesManager.setKeyboardWidth(it.toInt()) } }, valueRange = 50f..100f, steps = 9) }
             Sec(stringResource(R.string.section_position)) { val opts = listOf(stringResource(R.string.position_left), stringResource(R.string.position_center), stringResource(R.string.position_right)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { opts.forEachIndexed { i, l -> FilterChip(selected = i == alignment, onClick = { scope.launch { preferencesManager.setKeyboardAlignment(i) } }, label = { Text(l) }, modifier = Modifier.weight(1f)) } } }
             Sec(stringResource(R.string.section_padding)) { Text(stringResource(R.string.padding_label, bottomPadding)); Sub(stringResource(R.string.padding_desc)); Slider(value = bottomPadding.toFloat(), onValueChange = { scope.launch { preferencesManager.setBottomPadding(it.roundToInt()) } }, valueRange = 0f..60f, steps = 11) }
-            Sec(stringResource(R.string.section_typing)) { Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }; Sub(stringResource(R.string.number_row_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.auto_capitalize_toggle), autoCap) { scope.launch { preferencesManager.setAutoCapitalize(it) } }; Sub(stringResource(R.string.auto_capitalize_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.spacebar_cursor_toggle), spacebarCursor) { scope.launch { preferencesManager.setSpacebarCursor(it) } }; Sub(stringResource(R.string.spacebar_cursor_desc)) }
+            Sec(stringResource(R.string.section_typing)) { Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }; Sub(stringResource(R.string.number_row_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.auto_capitalize_toggle), autoCap) { scope.launch { preferencesManager.setAutoCapitalize(it) } }; Sub(stringResource(R.string.auto_capitalize_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.spacebar_cursor_toggle), spacebarCursor) { scope.launch { preferencesManager.setSpacebarCursor(it) } } }
             Sec(stringResource(R.string.section_theme)) { Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }; Sub(stringResource(R.string.theme_desc)) }
             Sec(stringResource(R.string.section_clipboard)) { Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }; Sub(stringResource(R.string.clipboard_desc)) }
             Sec(stringResource(R.string.section_feedback)) { Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }; Sub(stringResource(R.string.sound_desc)) }

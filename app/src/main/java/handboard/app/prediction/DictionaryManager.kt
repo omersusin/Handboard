@@ -1,9 +1,6 @@
 package handboard.app.prediction
 
 import android.content.Context
-import android.net.Uri
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -74,46 +71,6 @@ class DictionaryManager(private val context: Context) {
                 }
             }
         } catch (_: Exception) {}
-    }
-
-    /**
-     * Akıllı İçe Aktarma ve Dönüştürücü (Converter)
-     * Binary (.dict) dosyalarını tarar ve sadece içindeki geçerli kelimeleri ayıklar.
-     */
-    suspend fun importAndConvertFile(uri: Uri): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val bytes = context.contentResolver.openInputStream(uri)?.readBytes() ?: return@withContext false
-            val dictDir = File(context.filesDir, "dictionaries").apply { mkdirs() }
-            val destFile = File(dictDir, "custom_${System.currentTimeMillis()}.txt")
-
-            // Dosya binary mi kontrol et (içinde null byte var mı?)
-            val isBinary = bytes.contains(0.toByte())
-
-            if (isBinary) {
-                // Sıkıştırılmış AOSP formatı -> Scavenger Converter
-                val text = String(bytes, Charsets.ISO_8859_1) // Binary bozmadan oku
-                // Sadece yan yana gelmiş 2 ila 30 harflik karakter dizilerini avla
-                val extractionRegex = Regex("[\\p{L}]{2,30}")
-                val words = extractionRegex.findAll(text)
-                    .map { it.value.lowercase() }
-                    .filter { it.matches(validWordRegex) } // Güvenlik kontrolü
-                    .toSet()
-
-                if (words.isEmpty()) return@withContext false
-
-                destFile.printWriter().use { out ->
-                    words.forEach { word ->
-                        out.println("$word\t500") // Standart frekans ile kaydet
-                    }
-                }
-            } else {
-                // Zaten metin dosyası, direkt kopyala
-                destFile.writeBytes(bytes)
-            }
-            true
-        } catch (e: Exception) {
-            false
-        }
     }
 
     fun deleteCustomDictionaries() {

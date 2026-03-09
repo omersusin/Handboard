@@ -18,8 +18,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun BackspaceIcon(tint: Color, size: Dp = 20.dp) {
     Canvas(modifier = Modifier.size(size)) {
-        val w = this.size.width; val h = this.size.height
-        val sw = w * 0.08f
+        val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
         val shape = Path().apply {
             moveTo(w * 0.32f, h * 0.15f); lineTo(w * 0.88f, h * 0.15f)
@@ -83,16 +82,12 @@ fun BackArrowIcon(tint: Color, size: Dp = 22.dp) {
     }
 }
 
-// --- Toolbar Icons ---
-
 @Composable
 fun SearchIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
         val w = this.size.width; val h = this.size.height; val sw = w * 0.10f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round)
-        // Circle
         drawCircle(tint, radius = w * 0.28f, center = Offset(w * 0.42f, h * 0.42f), style = stroke)
-        // Handle
         drawLine(tint, Offset(w * 0.62f, h * 0.62f), Offset(w * 0.88f, h * 0.88f), strokeWidth = sw)
     }
 }
@@ -102,7 +97,6 @@ fun EditIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
         val w = this.size.width; val h = this.size.height; val sw = w * 0.09f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        // Pencil body
         val pencil = Path().apply {
             moveTo(w * 0.72f, h * 0.10f); lineTo(w * 0.90f, h * 0.28f)
             lineTo(w * 0.35f, h * 0.82f); lineTo(w * 0.10f, h * 0.90f)
@@ -117,15 +111,12 @@ fun EmojiIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
         val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round)
-        // Face circle
         drawCircle(tint, radius = w * 0.40f, center = Offset(w / 2, h / 2), style = stroke)
-        // Eyes
         drawCircle(tint, radius = w * 0.05f, center = Offset(w * 0.36f, h * 0.40f))
         drawCircle(tint, radius = w * 0.05f, center = Offset(w * 0.64f, h * 0.40f))
-        // Smile
         val smile = Path().apply {
             moveTo(w * 0.32f, h * 0.58f)
-            quadraticTo(w * 0.50f, h * 0.78f, w * 0.68f, h * 0.58f)
+            quadraticBezierTo(w * 0.50f, h * 0.78f, w * 0.68f, h * 0.58f)
         }
         drawPath(smile, tint, style = stroke)
     }
@@ -152,13 +143,10 @@ fun ClipboardIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
         val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        // Board
         drawRoundRect(tint, topLeft = Offset(w * 0.18f, h * 0.18f),
             size = Size(w * 0.64f, h * 0.74f), cornerRadius = CornerRadius(w * 0.06f), style = stroke)
-        // Clip
         drawRoundRect(tint, topLeft = Offset(w * 0.34f, h * 0.06f),
             size = Size(w * 0.32f, h * 0.18f), cornerRadius = CornerRadius(w * 0.04f), style = stroke)
-        // Lines
         drawLine(tint, Offset(w * 0.30f, h * 0.45f), Offset(w * 0.70f, h * 0.45f), strokeWidth = sw * 0.6f)
         drawLine(tint, Offset(w * 0.30f, h * 0.58f), Offset(w * 0.70f, h * 0.58f), strokeWidth = sw * 0.6f)
         drawLine(tint, Offset(w * 0.30f, h * 0.71f), Offset(w * 0.55f, h * 0.71f), strokeWidth = sw * 0.6f)
@@ -170,26 +158,21 @@ fun KaomojiIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
         val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round)
-        // Parentheses face  ( ◕‿◕ )
-        // Left paren
         val leftP = Path().apply {
             moveTo(w * 0.25f, h * 0.20f)
-            quadraticTo(w * 0.10f, h * 0.50f, w * 0.25f, h * 0.80f)
+            quadraticBezierTo(w * 0.10f, h * 0.50f, w * 0.25f, h * 0.80f)
         }
         drawPath(leftP, tint, style = stroke)
-        // Right paren
         val rightP = Path().apply {
             moveTo(w * 0.75f, h * 0.20f)
-            quadraticTo(w * 0.90f, h * 0.50f, w * 0.75f, h * 0.80f)
+            quadraticBezierTo(w * 0.90f, h * 0.50f, w * 0.75f, h * 0.80f)
         }
         drawPath(rightP, tint, style = stroke)
-        // Eyes
         drawCircle(tint, radius = w * 0.06f, center = Offset(w * 0.38f, h * 0.42f))
         drawCircle(tint, radius = w * 0.06f, center = Offset(w * 0.62f, h * 0.42f))
-        // Smile
         val smile = Path().apply {
             moveTo(w * 0.35f, h * 0.60f)
-            quadraticTo(w * 0.50f, h * 0.75f, w * 0.65f, h * 0.60f)
+            quadraticBezierTo(w * 0.50f, h * 0.75f, w * 0.65f, h * 0.60f)
         }
         drawPath(smile, tint, style = stroke)
     }

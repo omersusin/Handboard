@@ -25,6 +25,7 @@ class PreferencesManager(private val context: Context) {
         val KEY_SOUND = booleanPreferencesKey("sound_enabled")
         val KEY_SUGGESTIONS = intPreferencesKey("suggestion_count")
         val KEY_PREDICTIONS = booleanPreferencesKey("predictions_enabled")
+        val KEY_AUTOCORRECT = booleanPreferencesKey("autocorrect_enabled")
         val KEY_BOTTOM_PADDING = intPreferencesKey("bottom_padding")
         val KEY_CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
         val KEY_FOLLOW_SYSTEM_THEME = booleanPreferencesKey("follow_system_theme")
@@ -33,6 +34,7 @@ class PreferencesManager(private val context: Context) {
         val KEY_SPACEBAR_CURSOR = booleanPreferencesKey("spacebar_cursor")
         val KEY_HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
         val KEY_LARGE_KEYS = booleanPreferencesKey("large_keys")
+        val KEY_DICTIONARY = stringPreferencesKey("dictionary_id")
     }
 
     val keyboardHeight: Flow<Float> = context.dataStore.data.map { it[KEY_HEIGHT] ?: 1.0f }
@@ -43,6 +45,7 @@ class PreferencesManager(private val context: Context) {
     val soundEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_SOUND] ?: false }
     val suggestionCount: Flow<Int> = context.dataStore.data.map { it[KEY_SUGGESTIONS] ?: 3 }
     val predictionsEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_PREDICTIONS] ?: true }
+    val autocorrectEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTOCORRECT] ?: true }
     val bottomPadding: Flow<Int> = context.dataStore.data.map { it[KEY_BOTTOM_PADDING] ?: 0 }
     val clipboardEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CLIPBOARD_ENABLED] ?: false }
     val followSystemTheme: Flow<Boolean> = context.dataStore.data.map { it[KEY_FOLLOW_SYSTEM_THEME] ?: false }
@@ -51,6 +54,7 @@ class PreferencesManager(private val context: Context) {
     val spacebarCursor: Flow<Boolean> = context.dataStore.data.map { it[KEY_SPACEBAR_CURSOR] ?: true }
     val highContrast: Flow<Boolean> = context.dataStore.data.map { it[KEY_HIGH_CONTRAST] ?: false }
     val largeKeys: Flow<Boolean> = context.dataStore.data.map { it[KEY_LARGE_KEYS] ?: false }
+    val dictionaryId: Flow<String> = context.dataStore.data.map { it[KEY_DICTIONARY] ?: "en_us" }
 
     suspend fun setKeyboardHeight(v: Float) { context.dataStore.edit { it[KEY_HEIGHT] = v } }
     suspend fun setKeyboardWidth(v: Int) { context.dataStore.edit { it[KEY_WIDTH] = v } }
@@ -60,6 +64,7 @@ class PreferencesManager(private val context: Context) {
     suspend fun setSoundEnabled(v: Boolean) { context.dataStore.edit { it[KEY_SOUND] = v } }
     suspend fun setSuggestionCount(v: Int) { context.dataStore.edit { it[KEY_SUGGESTIONS] = v } }
     suspend fun setPredictionsEnabled(v: Boolean) { context.dataStore.edit { it[KEY_PREDICTIONS] = v } }
+    suspend fun setAutocorrectEnabled(v: Boolean) { context.dataStore.edit { it[KEY_AUTOCORRECT] = v } }
     suspend fun setBottomPadding(v: Int) { context.dataStore.edit { it[KEY_BOTTOM_PADDING] = v } }
     suspend fun setClipboardEnabled(v: Boolean) { context.dataStore.edit { it[KEY_CLIPBOARD_ENABLED] = v } }
     suspend fun setFollowSystemTheme(v: Boolean) { context.dataStore.edit { it[KEY_FOLLOW_SYSTEM_THEME] = v } }
@@ -68,4 +73,5 @@ class PreferencesManager(private val context: Context) {
     suspend fun setSpacebarCursor(v: Boolean) { context.dataStore.edit { it[KEY_SPACEBAR_CURSOR] = v } }
     suspend fun setHighContrast(v: Boolean) { context.dataStore.edit { it[KEY_HIGH_CONTRAST] = v } }
     suspend fun setLargeKeys(v: Boolean) { context.dataStore.edit { it[KEY_LARGE_KEYS] = v } }
+    suspend fun setDictionaryId(v: String) { context.dataStore.edit { it[KEY_DICTIONARY] = v } }
 }

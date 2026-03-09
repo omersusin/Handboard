@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,14 +28,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import handboard.app.R
 import handboard.app.layout.LayoutRegistry
 import handboard.app.layout.ui.BackArrowIcon
+import handboard.app.prediction.DictionaryManager
+import handboard.app.prediction.WordPredictor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -45,6 +50,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val heightScale by preferencesManager.keyboardHeight.collectAsState(initial = 1.0f)
     val widthPercent by preferencesManager.keyboardWidth.collectAsState(initial = 100)
@@ -54,6 +60,7 @@ fun SettingsScreen(
     val sound by preferencesManager.soundEnabled.collectAsState(initial = false)
     val suggestionCount by preferencesManager.suggestionCount.collectAsState(initial = 3)
     val predictionsEnabled by preferencesManager.predictionsEnabled.collectAsState(initial = true)
+    val autocorrectEnabled by preferencesManager.autocorrectEnabled.collectAsState(initial = true)
     val bottomPadding by preferencesManager.bottomPadding.collectAsState(initial = 0)
     val clipboardEnabled by preferencesManager.clipboardEnabled.collectAsState(initial = false)
     val followSystemTheme by preferencesManager.followSystemTheme.collectAsState(initial = false)
@@ -62,27 +69,65 @@ fun SettingsScreen(
     val spacebarCursor by preferencesManager.spacebarCursor.collectAsState(initial = true)
     val highContrast by preferencesManager.highContrast.collectAsState(initial = false)
     val largeKeys by preferencesManager.largeKeys.collectAsState(initial = false)
+    val dictId by preferencesManager.dictionaryId.collectAsState(initial = "en_us")
+
+    val dictManager = remember { DictionaryManager(context) }
+    val availableDicts = remember { dictManager.getAvailable() }
+    val predictor = remember { WordPredictor().apply { loadDictionary(context, dictId) } }
+    val personalWordsCount = remember(dictId) { predictor.getPersonalWords().size }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        BackArrowIcon(tint = MaterialTheme.colorScheme.onSurface)
-                    }
+                    IconButton(onClick = onBack) { BackArrowIcon(tint = MaterialTheme.colorScheme.onSurface) }
                 }
             )
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Dictionary
+            Sec(stringResource(R.string.section_dictionary)) {
+                availableDicts.forEach { dict ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setDictionaryId(dict.id) } }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = dict.id == dictId, onClick = { scope.launch { preferencesManager.setDictionaryId(dict.id) } })
+                        Spacer(Modifier.width(8.dp))
+                        Text(dict.name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Sub(stringResource(R.string.dict_active, availableDicts.find { it.id == dictId }?.name ?: "Built-in", predictor.getDictionarySize()))
+            }
+
+            // Predictions
+            Sec(stringResource(R.string.section_predictions)) {
+                Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
+                if (predictionsEnabled) {
+                    Spacer(Modifier.height(8.dp))
+                    Toggle(stringResource(R.string.autocorrect_toggle), autocorrectEnabled) { scope.launch { preferencesManager.setAutocorrectEnabled(it) } }
+                    Sub(stringResource(R.string.autocorrect_desc))
+                    Spacer(Modifier.height(16.dp))
+                    Text(stringResource(R.string.suggestions_label, suggestionCount))
+                    Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3)
+                }
+            }
+
+            // Personal Dictionary
+            Sec(stringResource(R.string.section_personal_dict)) {
+                Text(stringResource(R.string.personal_words_count, personalWordsCount), style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = { predictor.clearPersonalDictionary() }) {
+                    Text(stringResource(R.string.personal_clear))
+                }
+            }
+
             // Layout
             Sec(stringResource(R.string.section_layout)) {
                 LayoutRegistry.getAllNames().forEach { name ->
@@ -136,16 +181,6 @@ fun SettingsScreen(
                 Sub(stringResource(R.string.theme_desc))
             }
 
-            // Predictions
-            Sec(stringResource(R.string.section_predictions)) {
-                Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
-                if (predictionsEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.suggestions_label, suggestionCount))
-                    Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3)
-                }
-            }
-
             // Clipboard
             Sec(stringResource(R.string.section_clipboard)) {
                 Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }
@@ -168,13 +203,6 @@ fun SettingsScreen(
                 Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }
                 Sub(stringResource(R.string.large_keys_desc))
             }
-
-            // About
-            Sec(stringResource(R.string.section_about)) {
-                Text(stringResource(R.string.about_version), style = MaterialTheme.typography.bodyMedium)
-                Sub(stringResource(R.string.about_desc))
-            }
-
             Spacer(Modifier.height(32.dp))
         }
     }

@@ -22,7 +22,8 @@ import handboard.app.core.theme.KeyText
 import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
-import handboard.app.layout.ui.*
+import handboard.app.layout.ui.SearchIcon
+import handboard.app.layout.ui.TravelExploreIcon
 import java.net.URLEncoder
 
 @Composable
@@ -55,9 +56,10 @@ fun SearchPanel(
             )
         } else {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp).background(KeyboardBackground).padding(6.dp)) {
+                // Arama Kutusu (Fake Input)
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(KeyBackground).clickable { openSearch(query) }.padding(10.dp)) {
-                        if (query.isEmpty()) Text("🔍 Google Search...", color = KeyTextDim, fontSize = 14.sp)
+                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(KeyBackground).clickable { if (query.isNotBlank()) openSearch(query) }.padding(10.dp)) {
+                        if (query.isEmpty()) Text("🔍 Type to search Google...", color = KeyTextDim, fontSize = 14.sp)
                         else Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(query, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Box(modifier = Modifier.padding(start = 2.dp).width(2.dp).height(16.dp).background(ShiftActiveBackground))
@@ -77,7 +79,9 @@ fun SearchPanel(
 
                 Spacer(Modifier.height(4.dp))
                 if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp), color = ShiftActiveBackground)
-                
+                Spacer(Modifier.height(4.dp))
+
+                // Öneriler
                 LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(suggestions) { suggestion ->
                         Row(

@@ -22,9 +22,11 @@ import handboard.app.core.theme.KeyText
 import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
-import handboard.app.layout.ui.*
+import handboard.app.layout.ui.ContentCopyIcon
+import handboard.app.layout.ui.RefreshIcon
+import handboard.app.layout.ui.SwapHorizIcon
 import kotlinx.coroutines.launch
-import java.text.DecimalFormat
+import java.util.Locale
 
 @Composable
 fun CurrencyPanel(
@@ -44,14 +46,20 @@ fun CurrencyPanel(
     var from by remember { mutableStateOf("USD") }
     var to by remember { mutableStateOf("TRY") }
     var result by remember { mutableStateOf<String?>(null) }
-    val fmt = remember { DecimalFormat("#,##0.00") }
 
     val amountStr = query.filter { it.isDigit() || it == '.' || it == ',' }.replace(',', '.')
     val amount = amountStr.toDoubleOrNull() ?: 1.0
 
     LaunchedEffect(Unit) { repo.loadRates("USD") }
+    
+    // Crash Proof Result Calculation
     LaunchedEffect(amount, from, to, rates) {
-        result = if (rates.isNotEmpty()) repo.convert(amount, from, to)?.let { fmt.format(it) } else null
+        try {
+            if (rates.isNotEmpty()) {
+                val converted = repo.convert(amount, from, to)
+                result = converted?.let { String.format(Locale.US, "%,.2f", it) }
+            } else result = null
+        } catch (_: Exception) { result = null }
     }
 
     Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp).background(KeyboardBackground).padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

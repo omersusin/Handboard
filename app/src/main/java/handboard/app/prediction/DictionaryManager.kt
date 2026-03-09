@@ -9,6 +9,9 @@ data class DictionaryInfo(val id: String, val name: String, val isAsset: Boolean
 
 class DictionaryManager(private val context: Context) {
     
+    // Yalnızca Evrensel Harfleri kabul eden güvenlik filtresi
+    private val validWordRegex = Regex("^[\\p{L}]+$")
+
     fun getAvailable(): List<DictionaryInfo> {
         val list = mutableListOf<DictionaryInfo>()
         
@@ -41,11 +44,14 @@ class DictionaryManager(private val context: Context) {
                 r.forEachLine { line ->
                     val trimmed = line.trim()
                     if (trimmed.isNotEmpty()) {
-                        // Boşluk, sekme vs. ne varsa ayır. Frekans yoksa varsayılan 500 ata.
                         val parts = trimmed.split(Regex("\\s+"), limit = 2)
                         val word = parts[0].lowercase()
-                        val freq = if (parts.size > 1) parts[1].toIntOrNull() ?: 500 else 500
-                        if (word.length in 1..30) trie.insert(word, freq)
+                        
+                        // GÜVENLİK: Eğer kelime içinde bozuk karakter (, sayı, sembol) varsa yoksay!
+                        if (word.length in 1..30 && word.matches(validWordRegex)) {
+                            val freq = if (parts.size > 1) parts[1].toIntOrNull() ?: 500 else 500
+                            trie.insert(word, freq)
+                        }
                     }
                 }
             }
@@ -59,10 +65,21 @@ class DictionaryManager(private val context: Context) {
                 r.forEachLine { line ->
                     val parts = line.split(Regex("\\s+"))
                     if (parts.size >= 3) {
-                        bigramMap.getOrPut(parts[0].lowercase()) { HashMap() }[parts[1].lowercase()] = parts[2].toIntOrNull() ?: 1
+                        val prev = parts[0].lowercase()
+                        val next = parts[1].lowercase()
+                        if (prev.matches(validWordRegex) && next.matches(validWordRegex)) {
+                            bigramMap.getOrPut(prev) { HashMap() }[next] = parts[2].toIntOrNull() ?: 1
+                        }
                     }
                 }
             }
         } catch (_: Exception) {}
+    }
+
+    fun deleteCustomDictionaries() {
+        val dictDir = File(context.filesDir, "dictionaries")
+        if (dictDir.exists()) {
+            dictDir.listFiles()?.forEach { it.delete() }
+        }
     }
 }

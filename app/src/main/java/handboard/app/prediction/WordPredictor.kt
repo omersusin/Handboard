@@ -10,13 +10,13 @@ class WordPredictor {
     private var personalDict: PersonalDictionary? = null
     private var dictManager: DictionaryManager? = null
 
+    // Birden fazla dili aynı anda yükler (Multilingual Typing)
     fun loadDictionaries(context: Context, dictIds: Set<String>) {
         val newTrie = Trie()
         bigramMap.clear()
         
         dictManager = DictionaryManager(context)
         
-        // Loop over selected dictionaries and dump all words into one Trie
         dictIds.forEach { dictId ->
             val dict = dictManager?.getAvailable()?.find { it.id == dictId }
             if (dict != null) dictManager?.loadIntoTrie(dict, newTrie)
@@ -29,7 +29,6 @@ class WordPredictor {
 
         if (newTrie.size() == 0) loadFallback(newTrie)
 
-        // Atomic swap of the engine to prevent crashing during typing
         trie = newTrie
     }
 
@@ -44,11 +43,12 @@ class WordPredictor {
         if (prefix.isEmpty()) return emptyList()
 
         val results = mutableListOf<String>()
-        results.addAll(trie.wordsWithPrefix(prefix, maxSuggestions + 3).filter { it.first != prefix }.map { it.first })
+        val prefixPairs = trie.wordsWithPrefix(prefix, maxSuggestions + 3)
+        results.addAll(prefixPairs.filter { it.first != prefix }.map { it.first })
 
         if (autocorrect && results.size < maxSuggestions && prefix.length >= 3) {
-            val fuzzy = trie.fuzzySearch(prefix, maxSuggestions - results.size).map { it.first }.filter { it !in results }
-            results.addAll(fuzzy)
+            val fuzzyPairs = trie.fuzzySearch(prefix, maxSuggestions - results.size)
+            results.addAll(fuzzyPairs.map { it.first }.filter { it !in results })
         }
 
         if (trie.search(prefix) && results.isEmpty()) return predictNextWord(maxSuggestions, prefix)
@@ -58,7 +58,8 @@ class WordPredictor {
     private fun predictNextWord(limit: Int, overrideLastWord: String? = null): List<String> {
         val word = overrideLastWord ?: lastWord
         if (word.isEmpty()) return emptyList()
-        return bigramMap[word.lowercase()]?.entries?.sortedByDescending { it.value }?.take(limit)?.map { it.key } ?: emptyList()
+        val bigrams = bigramMap[word.lowercase()] ?: return emptyList()
+        return bigrams.entries.sortedByDescending { it.value }.take(limit).map { it.key }
     }
 
     fun onWordCommitted(word: String) {
@@ -68,7 +69,9 @@ class WordPredictor {
         trie.updateFrequency(lower, 5)
         
         if (lastWord.isNotEmpty()) {
-            bigramMap.getOrPut(lastWord) { HashMap() }.merge(lower, 1) { old, _ -> old + 1 }
+            val count = bigramMap.getOrPut(lastWord) { HashMap() }[lower] ?: 0
+            bigramMap[lastWord]!![lower] = count + 1
+            personalDict?.learnBigram(lastWord, lower)
         }
         lastWord = lower
     }

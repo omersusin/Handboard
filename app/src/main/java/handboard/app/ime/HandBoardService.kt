@@ -149,19 +149,18 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 val sc2 by prefs.spacebarCursor.collectAsState(initial = true)
                 val lk by prefs.largeKeys.collectAsState(initial = false)
                 
-                // Multi-dictionary bindings
                 val multiEnabled by prefs.multilingualEnabled.collectAsState(initial = false)
                 val activeDicts by prefs.activeDicts.collectAsState(initial = setOf("en_us"))
+                val dictId by prefs.dictionaryId.collectAsState(initial = "en_us")
 
                 LaunchedEffect(ce) {
                     if (ce && clipboard == null) { clipboard = ClipboardHistory(this@HandBoardService); clipboard?.initialize() }
                     else if (!ce) { clipboard?.destroy(); clipboard = null }
                 }
                 
-                // Load dictionaries on IO Thread to prevent UI freeze
-                LaunchedEffect(multiEnabled, activeDicts) {
+                LaunchedEffect(multiEnabled, activeDicts, dictId) {
                     withContext(Dispatchers.IO) {
-                        val toLoad = if (multiEnabled) activeDicts else setOf(activeDicts.firstOrNull() ?: "en_us")
+                        val toLoad = if (multiEnabled) activeDicts else setOf(dictId)
                         predictor.loadDictionaries(this@HandBoardService, toLoad)
                     }
                 }

@@ -5,10 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,103 +42,114 @@ fun LayoutToolbar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 3.dp),
+            .height(38.dp)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Left: layout/panel label
         Text(
             text = when (currentPanel) {
                 KeyboardPanel.KEYBOARD -> currentLayoutName
                 KeyboardPanel.EMOJI -> "Emoji"
                 KeyboardPanel.CLIPBOARD -> "Clipboard"
                 KeyboardPanel.KAOMOJI -> "Kaomoji"
-                KeyboardPanel.TEXT_EDITING -> "Editing"
+                KeyboardPanel.TEXT_EDITING -> "Edit"
                 KeyboardPanel.SEARCH -> "Search"
             },
-            color = KeyTextDim, fontSize = 11.sp, fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = 6.dp)
+            color = KeyTextDim,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(start = 4.dp)
         )
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Right: action buttons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // ABC (only when not on keyboard)
             if (currentPanel != KeyboardPanel.KEYBOARD) {
-                Btn("ABC", "Switch to keyboard", currentPanel == KeyboardPanel.KEYBOARD) {
-                    onSwitchPanel(KeyboardPanel.KEYBOARD)
-                }
-                Spacer(Modifier.width(3.dp))
+                ToolbarIconButton(
+                    content = { Text("ABC", color = KeyText, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                    description = "Keyboard",
+                    isActive = false,
+                    onClick = { onSwitchPanel(KeyboardPanel.KEYBOARD) }
+                )
             }
 
             // Search
-            Btn("🔍", "Search", currentPanel == KeyboardPanel.SEARCH) {
-                onSwitchPanel(
-                    if (currentPanel == KeyboardPanel.SEARCH) KeyboardPanel.KEYBOARD
-                    else KeyboardPanel.SEARCH
-                )
-            }
-            Spacer(Modifier.width(3.dp))
+            ToolbarIconButton(
+                content = { SearchIcon(tint = KeyText, size = 16.dp) },
+                description = "Search",
+                isActive = currentPanel == KeyboardPanel.SEARCH,
+                onClick = { onSwitchPanel(if (currentPanel == KeyboardPanel.SEARCH) KeyboardPanel.KEYBOARD else KeyboardPanel.SEARCH) }
+            )
 
-            // Text editing
-            Btn("✎", "Text editing", currentPanel == KeyboardPanel.TEXT_EDITING) {
-                onSwitchPanel(
-                    if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD
-                    else KeyboardPanel.TEXT_EDITING
-                )
-            }
-            Spacer(Modifier.width(3.dp))
+            // Edit
+            ToolbarIconButton(
+                content = { EditIcon(tint = KeyText, size = 16.dp) },
+                description = "Text editing",
+                isActive = currentPanel == KeyboardPanel.TEXT_EDITING,
+                onClick = { onSwitchPanel(if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD else KeyboardPanel.TEXT_EDITING) }
+            )
 
-            // Clipboard
+            // Clipboard (if enabled)
             if (clipboardEnabled) {
-                Btn(content = { ClipboardIcon(tint = KeyText, size = 16.dp) },
-                    desc = "Clipboard", active = currentPanel == KeyboardPanel.CLIPBOARD) {
-                    onSwitchPanel(
-                        if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD
-                        else KeyboardPanel.CLIPBOARD
-                    )
-                }
-                Spacer(Modifier.width(3.dp))
+                ToolbarIconButton(
+                    content = { ClipboardIcon(tint = KeyText, size = 16.dp) },
+                    description = "Clipboard",
+                    isActive = currentPanel == KeyboardPanel.CLIPBOARD,
+                    onClick = { onSwitchPanel(if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD else KeyboardPanel.CLIPBOARD) }
+                )
             }
 
             // Kaomoji
-            Btn("(◕‿◕)", "Kaomoji", currentPanel == KeyboardPanel.KAOMOJI) {
-                onSwitchPanel(
-                    if (currentPanel == KeyboardPanel.KAOMOJI) KeyboardPanel.KEYBOARD
-                    else KeyboardPanel.KAOMOJI
-                )
-            }
-            Spacer(Modifier.width(3.dp))
+            ToolbarIconButton(
+                content = { KaomojiIcon(tint = KeyText, size = 16.dp) },
+                description = "Kaomoji",
+                isActive = currentPanel == KeyboardPanel.KAOMOJI,
+                onClick = { onSwitchPanel(if (currentPanel == KeyboardPanel.KAOMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.KAOMOJI) }
+            )
 
             // Emoji
-            Btn("😊", "Emoji", currentPanel == KeyboardPanel.EMOJI) {
-                onSwitchPanel(
-                    if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD
-                    else KeyboardPanel.EMOJI
-                )
-            }
-            Spacer(Modifier.width(3.dp))
+            ToolbarIconButton(
+                content = { EmojiIcon(tint = KeyText, size = 16.dp) },
+                description = "Emoji",
+                isActive = currentPanel == KeyboardPanel.EMOJI,
+                onClick = { onSwitchPanel(if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.EMOJI) }
+            )
 
-            // Layout switch
-            Btn(content = { GlobeIcon(tint = KeyText, size = 16.dp) },
-                desc = "Switch layout", active = false, onClick = onSwitchLayout)
+            // Globe / Layout switch
+            ToolbarIconButton(
+                content = { GlobeIcon(tint = KeyText, size = 16.dp) },
+                description = "Switch layout",
+                isActive = false,
+                onClick = onSwitchLayout
+            )
         }
     }
 }
 
 @Composable
-private fun Btn(label: String, desc: String, active: Boolean, onClick: () -> Unit) {
-    Btn(content = {
-        Text(label, color = KeyText, fontSize = if (label.length > 3) 10.sp else 12.sp,
-            fontWeight = FontWeight.Medium, maxLines = 1)
-    }, desc = desc, active = active, onClick = onClick)
-}
-
-@Composable
-private fun Btn(content: @Composable () -> Unit, desc: String, active: Boolean, onClick: () -> Unit) {
+private fun ToolbarIconButton(
+    content: @Composable () -> Unit,
+    description: String,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (active) ShiftActiveBackground else ActionKeyBackground)
+            .size(32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isActive) ShiftActiveBackground else ActionKeyBackground)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = desc; role = Role.Button }
-            .padding(horizontal = 8.dp, vertical = 5.dp),
+            .semantics {
+                contentDescription = description
+                role = Role.Button
+            },
         contentAlignment = Alignment.Center
-    ) { content() }
+    ) {
+        content()
+    }
 }

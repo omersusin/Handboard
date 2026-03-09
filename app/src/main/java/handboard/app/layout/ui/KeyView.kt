@@ -1,12 +1,10 @@
 package handboard.app.layout.ui
 
 import android.media.AudioManager
-import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
@@ -15,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -25,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -71,6 +69,7 @@ fun KeyView(
     val currentHaptic by rememberUpdatedState(hapticEnabled)
     val currentSound by rememberUpdatedState(soundEnabled)
     val currentOnAltChar by rememberUpdatedState(onAltChar)
+    val currentOnCursorMove by rememberUpdatedState(onCursorMove)
 
     var showAltPopup by remember { mutableStateOf(false) }
 
@@ -86,13 +85,10 @@ fun KeyView(
     val description = when (keyData.action) {
         is KeyAction.Backspace -> "Backspace"
         is KeyAction.Enter -> "Enter"
-        is KeyAction.Shift -> when (currentLayer) {
-            KeyboardLayer.LETTERS -> if (isCapsLock) "Caps Lock on" else if (isShifted) "Shift on" else "Shift"
-            else -> "More symbols"
-        }
+        is KeyAction.Shift -> if (isCapsLock) "Caps Lock" else if (isShifted) "Shift on" else "Shift"
         is KeyAction.Space -> "Space"
-        is KeyAction.SwitchToSymbols -> "Switch to symbols"
-        is KeyAction.SwitchToLetters -> "Switch to letters"
+        is KeyAction.SwitchToSymbols -> "Symbols"
+        is KeyAction.SwitchToLetters -> "Letters"
         is KeyAction.Text -> if (isShifted || isCapsLock) keyData.label.uppercase() else keyData.label
     }
 
@@ -100,8 +96,8 @@ fun KeyView(
         if (currentHaptic) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         if (currentSound) {
             try {
-                val am = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? AudioManager
-                am?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, -1f)
+                (context.getSystemService(android.content.Context.AUDIO_SERVICE) as? AudioManager)
+                    ?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, -1f)
             } catch (_: Exception) {}
         }
     }
@@ -110,39 +106,53 @@ fun KeyView(
         .padding(2.dp)
         .clip(RoundedCornerShape(8.dp))
         .background(bgColor)
-        .semantics {
-            contentDescription = description
-            role = Role.Button
-        }
+        .semantics { contentDescription = description; role = Role.Button }
 
-    // Spacebar: horizontal drag for cursor control
-    if (keyData.action is KeyAction.Space && onCursorMove != null) {
-        var dragAccumulator by remember { mutableFloatStateOf(0f) }
-        val threshold = 25f
-
+    // === SPACE BAR: tap = space, long-press + drag = cursor ===
+    if (keyData.action is KeyAction.Space) {
         Box(
             modifier = baseModifier
                 .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragStart = {
-                            dragAccumulator = 0f
-                            playFeedback()
-                        },
-                        onDragEnd = {
-                            if (abs(dragAccumulator) < threshold) {
-                                currentOnClick()
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        playFeedback()
+
+                        var totalDragX = 0f
+                        var isDragging = false
+                        var cursorMoved = false
+                        val threshold = 30f // pixels — significant drag threshold
+
+                        // Wait for movement or release
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            if (event.type == PointerEventType.Release) {
+                                break
                             }
-                        },
-                        onHorizontalDrag = { _, dragAmount ->
-                            dragAccumulator += dragAmount
-                            if (abs(dragAccumulator) >= threshold) {
-                                val direction = if (dragAccumulator > 0) 1 else -1
-                                onCursorMove(direction)
-                                dragAccumulator = 0f
-                                if (currentHaptic) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            if (event.type == PointerEventType.Move) {
+                                val change = event.changes.firstOrNull() ?: continue
+                                val dx = change.position.x - down.position.x
+                                totalDragX = dx
+
+                                if (!isDragging && abs(totalDragX) > threshold) {
+                                    isDragging = true
+                                }
+
+                                if (isDragging && abs(totalDragX) > threshold) {
+                                    val dir = if (totalDragX > 0) 1 else -1
+                                    currentOnCursorMove?.invoke(dir)
+                                    cursorMoved = true
+                                    totalDragX = 0f
+                                    if (currentHaptic) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    // Reset down position tracking
+                                }
                             }
                         }
-                    )
+
+                        // If no significant drag occurred, it's a tap → insert space
+                        if (!cursorMoved) {
+                            currentOnClick()
+                        }
+                    }
                 }
                 .defaultMinSize(minHeight = minH),
             contentAlignment = Alignment.Center
@@ -152,32 +162,24 @@ fun KeyView(
         return
     }
 
-    // Backspace: hold to repeat
+    // === BACKSPACE: hold to repeat ===
     if (keyData.action is KeyAction.Backspace) {
         Box(
             modifier = baseModifier
                 .pointerInput(keyData.label) {
                     awaitEachGesture {
-                        awaitFirstDown()
-                        playFeedback()
-                        currentOnClick()
-                        val job = scope.launch {
-                            delay(400L)
-                            while (true) { currentOnClick(); delay(50L) }
-                        }
-                        waitForUpOrCancellation()
-                        job.cancel()
+                        awaitFirstDown(); playFeedback(); currentOnClick()
+                        val job = scope.launch { delay(400L); while (true) { currentOnClick(); delay(50L) } }
+                        waitForUpOrCancellation(); job.cancel()
                     }
                 }
                 .defaultMinSize(minHeight = minH),
             contentAlignment = Alignment.Center
-        ) {
-            BackspaceIcon(tint = KeyText, size = 22.dp)
-        }
+        ) { BackspaceIcon(tint = KeyText, size = 20.dp) }
         return
     }
 
-    // Text keys: long press for alt chars
+    // === TEXT KEYS: long press for alt chars ===
     if (keyData.action is KeyAction.Text) {
         val altChars = remember(keyData.label) { AltChars.getAlts(keyData.label) }
         val hasAlts = altChars.isNotEmpty()
@@ -186,27 +188,17 @@ fun KeyView(
             modifier = baseModifier
                 .pointerInput(keyData.label) {
                     awaitEachGesture {
-                        awaitFirstDown()
-                        playFeedback()
-
-                        var longPressJob: Job? = null
-                        var wasLongPress = false
-
+                        awaitFirstDown(); playFeedback()
+                        var longJob: Job? = null; var wasLong = false
                         if (hasAlts) {
-                            longPressJob = scope.launch {
-                                delay(500L)
-                                wasLongPress = true
+                            longJob = scope.launch {
+                                delay(500L); wasLong = true
                                 if (currentHaptic) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 showAltPopup = true
                             }
                         }
-
-                        waitForUpOrCancellation()
-                        longPressJob?.cancel()
-
-                        if (!wasLongPress) {
-                            currentOnClick()
-                        }
+                        waitForUpOrCancellation(); longJob?.cancel()
+                        if (!wasLong) currentOnClick()
                     }
                 }
                 .defaultMinSize(minHeight = minH),
@@ -215,82 +207,41 @@ fun KeyView(
             val display = if ((isShifted || isCapsLock) && currentLayer == KeyboardLayer.LETTERS) {
                 (keyData.action as KeyAction.Text).char.uppercase()
             } else (keyData.action as KeyAction.Text).char
-
             Text(text = display, color = KeyText, fontSize = 18.sp, fontWeight = FontWeight.Normal)
-
-            // Alt chars indicator dot
             if (hasAlts) {
-                Text(
-                    text = "·",
-                    color = KeyTextDim.copy(alpha = 0.4f),
-                    fontSize = 8.sp,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 2.dp)
-                )
+                Text("·", color = KeyTextDim.copy(alpha = 0.4f), fontSize = 8.sp,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(end = 3.dp, top = 1.dp))
             }
-
-            // Alt chars popup
             if (showAltPopup) {
-                AltCharsPopup(
-                    chars = altChars,
-                    isShifted = isShifted || isCapsLock,
-                    onSelect = { char ->
-                        currentOnAltChar?.invoke(char)
-                    },
-                    onDismiss = { showAltPopup = false }
-                )
+                AltCharsPopup(chars = altChars, isShifted = isShifted || isCapsLock,
+                    onSelect = { currentOnAltChar?.invoke(it) }, onDismiss = { showAltPopup = false })
             }
         }
         return
     }
 
-    // All other keys: simple click
+    // === ALL OTHER KEYS: simple click ===
     Box(
-        modifier = baseModifier
-            .clickable {
-                playFeedback()
-                currentOnClick()
-            }
-            .defaultMinSize(minHeight = minH),
+        modifier = baseModifier.clickable { playFeedback(); currentOnClick() }.defaultMinSize(minHeight = minH),
         contentAlignment = Alignment.Center
     ) {
-        KeyContentRenderer(
-            action = keyData.action,
-            label = keyData.label,
-            style = keyData.style,
-            isShifted = isShifted,
-            isCapsLock = isCapsLock,
-            currentLayer = currentLayer
-        )
-    }
-}
-
-@Composable
-private fun KeyContentRenderer(
-    action: KeyAction,
-    label: String,
-    style: KeyStyle,
-    isShifted: Boolean,
-    isCapsLock: Boolean,
-    currentLayer: KeyboardLayer
-) {
-    when (action) {
-        is KeyAction.Enter -> EnterIcon(tint = KeyText, size = 22.dp)
-        is KeyAction.Shift -> {
-            when (currentLayer) {
-                KeyboardLayer.LETTERS -> {
-                    if (isCapsLock) CapsLockIcon(tint = KeyText, size = 22.dp)
-                    else if (isShifted) ShiftIcon(tint = KeyText, size = 22.dp, filled = true)
-                    else ShiftIcon(tint = KeyText, size = 22.dp, filled = false)
+        when (keyData.action) {
+            is KeyAction.Enter -> EnterIcon(tint = KeyText, size = 20.dp)
+            is KeyAction.Shift -> {
+                when (currentLayer) {
+                    KeyboardLayer.LETTERS -> when {
+                        isCapsLock -> CapsLockIcon(tint = KeyText, size = 20.dp)
+                        isShifted -> ShiftIcon(tint = KeyText, size = 20.dp, filled = true)
+                        else -> ShiftIcon(tint = KeyText, size = 20.dp, filled = false)
+                    }
+                    KeyboardLayer.SYMBOLS -> Text("=\\<", color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    KeyboardLayer.SYMBOLS2 -> Text("123", color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
-                KeyboardLayer.SYMBOLS -> Text(text = "=\\<", color = KeyTextDim, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                KeyboardLayer.SYMBOLS2 -> Text(text = "123", color = KeyTextDim, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
-        }
-        is KeyAction.SwitchToSymbols, is KeyAction.SwitchToLetters -> {
-            Text(text = label, color = KeyTextDim, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-        }
-        else -> {
-            Text(text = label, color = KeyText, fontSize = 18.sp, fontWeight = FontWeight.Normal)
+            is KeyAction.SwitchToSymbols, is KeyAction.SwitchToLetters -> {
+                Text(keyData.label, color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+            else -> Text(keyData.label, color = KeyText, fontSize = 16.sp)
         }
     }
 }

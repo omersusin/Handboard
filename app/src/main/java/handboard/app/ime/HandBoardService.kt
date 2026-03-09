@@ -39,274 +39,162 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
-    private lateinit var preferencesManager: PreferencesManager
-    private val wordPredictor = WordPredictor()
-    private var clipboardHistory: ClipboardHistory? = null
-
-    private var isPasswordField = false
-    private var isNumberField = false
+    private lateinit var prefs: PreferencesManager
+    private val predictor = WordPredictor()
+    private var clipboard: ClipboardHistory? = null
+    private var isPassword = false
+    private var isNumber = false
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateRegistryController.savedStateRegistry
+    override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
 
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        preferencesManager = PreferencesManager(this)
-        wordPredictor.loadDictionary(this)
+        prefs = PreferencesManager(this)
+        predictor.loadDictionary(this)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-
-        val inputType = info?.inputType ?: 0
-        val cls = inputType and InputType.TYPE_MASK_CLASS
-        val variation = inputType and InputType.TYPE_MASK_VARIATION
-        isPasswordField = variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-            (cls == InputType.TYPE_CLASS_NUMBER && (inputType and InputType.TYPE_NUMBER_VARIATION_PASSWORD) != 0)
-        isNumberField = cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
+        val t = info?.inputType ?: 0
+        val cls = t and InputType.TYPE_MASK_CLASS
+        val v = t and InputType.TYPE_MASK_VARIATION
+        isPassword = v == InputType.TYPE_TEXT_VARIATION_PASSWORD || v == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD || v == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+        isNumber = cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
     }
 
-    override fun onFinishInputView(finishingInput: Boolean) {
-        super.onFinishInputView(finishingInput)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+    override fun onFinishInputView(f: Boolean) { super.onFinishInputView(f); lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE) }
+
+    private fun getWord(): String {
+        val b = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString() ?: return ""
+        return predictor.getCurrentWord(b)
     }
 
-    private fun getCurrentWord(): String {
-        val ic = currentInputConnection ?: return ""
-        val before = ic.getTextBeforeCursor(100, 0)?.toString() ?: return ""
-        return wordPredictor.getCurrentWord(before)
-    }
-
-    private fun performBackspace() {
+    private fun doBackspace() {
         val ic = currentInputConnection ?: return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            ic.deleteSurroundingTextInCodePoints(1, 0)
-        } else {
-            val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
-            if (before.length >= 2 && Character.isLowSurrogate(before.last()) &&
-                Character.isHighSurrogate(before[before.length - 2])) {
-                ic.deleteSurroundingText(2, 0)
-            } else {
-                ic.deleteSurroundingText(1, 0)
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) ic.deleteSurroundingTextInCodePoints(1, 0)
+        else {
+            val b = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
+            if (b.length >= 2 && Character.isLowSurrogate(b.last()) && Character.isHighSurrogate(b[b.length - 2])) ic.deleteSurroundingText(2, 0)
+            else ic.deleteSurroundingText(1, 0)
         }
     }
 
-    private fun moveCursor(direction: Int) {
-        val ic = currentInputConnection ?: return
-        val code = if (direction > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
-        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
-        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+    private fun moveCursor(d: Int) {
+        val c = if (d > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, c))
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, c))
     }
 
-    private fun moveCursorHome() {
-        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MOVE_HOME))
-        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MOVE_HOME))
+    private fun sendKey(code: Int, meta: Int = 0) {
+        currentInputConnection?.sendKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, 0, meta))
+        currentInputConnection?.sendKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_UP, code, 0, meta))
     }
 
-    private fun moveCursorEnd() {
-        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MOVE_END))
-        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MOVE_END))
+    private fun shouldCap(auto: Boolean): Boolean {
+        if (!auto || isPassword) return false
+        val b = currentInputConnection?.getTextBeforeCursor(2, 0)?.toString() ?: return true
+        if (b.isEmpty()) return true
+        val t = b.trimEnd()
+        return t.isEmpty() || t.last() in listOf('.', '!', '?', '\n')
     }
 
-    private fun selectAll() {
-        currentInputConnection?.performContextMenuAction(android.R.id.selectAll)
-    }
-
-    private fun copyText() {
-        currentInputConnection?.performContextMenuAction(android.R.id.copy)
-    }
-
-    private fun cutText() {
-        currentInputConnection?.performContextMenuAction(android.R.id.cut)
-    }
-
-    private fun pasteText() {
-        currentInputConnection?.performContextMenuAction(android.R.id.paste)
-    }
-
-    private fun undoAction() {
-        currentInputConnection?.sendKeyEvent(
-            KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_Z, 0, KeyEvent.META_CTRL_ON))
-        currentInputConnection?.sendKeyEvent(
-            KeyEvent(0, 0, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_Z, 0, KeyEvent.META_CTRL_ON))
-    }
-
-    private fun redoAction() {
-        currentInputConnection?.sendKeyEvent(
-            KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_Z, 0,
-                KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON))
-        currentInputConnection?.sendKeyEvent(
-            KeyEvent(0, 0, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_Z, 0,
-                KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON))
-    }
-
-    private fun pasteImage(item: ClipboardItem) {
+    private fun pasteImg(item: ClipboardItem) {
         val uri = item.imageUri ?: return
         val ic = currentInputConnection ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             try {
-                val desc = android.content.ClipDescription("image", arrayOf(item.mimeType))
-                val info = InputContentInfo(uri, desc, null)
-                ic.commitContent(info, InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
+                val d = android.content.ClipDescription("image", arrayOf(item.mimeType))
+                ic.commitContent(InputContentInfo(uri, d, null), InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
             } catch (_: Exception) { item.text?.let { ic.commitText(it, 1) } }
-        } else {
-            item.text?.let { ic.commitText(it, 1) }
-        }
-    }
-
-    private fun shouldAutoCapitalize(autoCapEnabled: Boolean): Boolean {
-        if (!autoCapEnabled || isPasswordField) return false
-        val ic = currentInputConnection ?: return false
-        val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return true
-        if (before.isEmpty()) return true
-        val trimmed = before.trimEnd()
-        if (trimmed.isEmpty()) return before.isNotEmpty() // start of field after spaces
-        return trimmed.last() in listOf('.', '!', '?', '\n')
+        } else item.text?.let { ic.commitText(it, 1) }
     }
 
     override fun onCreateInputView(): View {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-
         return createComposeView(this, this) {
-            val heightScale by preferencesManager.keyboardHeight.collectAsState(initial = 1.0f)
-            val widthPercent by preferencesManager.keyboardWidth.collectAsState(initial = 100)
-            val alignment by preferencesManager.keyboardAlignment.collectAsState(initial = 1)
-            val layoutName by preferencesManager.selectedLayout.collectAsState(initial = "QWERTY")
-            val hapticEnabled by preferencesManager.hapticEnabled.collectAsState(initial = true)
-            val soundEnabled by preferencesManager.soundEnabled.collectAsState(initial = false)
-            val suggestionCount by preferencesManager.suggestionCount.collectAsState(initial = 3)
-            val predictionsEnabled by preferencesManager.predictionsEnabled.collectAsState(initial = true)
-            val bottomPadding by preferencesManager.bottomPadding.collectAsState(initial = 0)
-            val clipboardEnabled by preferencesManager.clipboardEnabled.collectAsState(initial = false)
-            val followSystemTheme by preferencesManager.followSystemTheme.collectAsState(initial = false)
-            val numberRowEnabled by preferencesManager.numberRowEnabled.collectAsState(initial = false)
-            val autoCapitalize by preferencesManager.autoCapitalize.collectAsState(initial = true)
-            val spacebarCursor by preferencesManager.spacebarCursor.collectAsState(initial = true)
-            val largeKeys by preferencesManager.largeKeys.collectAsState(initial = false)
+            val hs by prefs.keyboardHeight.collectAsState(initial = 1.0f)
+            val wp by prefs.keyboardWidth.collectAsState(initial = 100)
+            val al by prefs.keyboardAlignment.collectAsState(initial = 1)
+            val ln by prefs.selectedLayout.collectAsState(initial = "QWERTY")
+            val hap by prefs.hapticEnabled.collectAsState(initial = true)
+            val snd by prefs.soundEnabled.collectAsState(initial = false)
+            val sc by prefs.suggestionCount.collectAsState(initial = 3)
+            val pe by prefs.predictionsEnabled.collectAsState(initial = true)
+            val bp by prefs.bottomPadding.collectAsState(initial = 0)
+            val ce by prefs.clipboardEnabled.collectAsState(initial = false)
+            val fst by prefs.followSystemTheme.collectAsState(initial = false)
+            val nr by prefs.numberRowEnabled.collectAsState(initial = false)
+            val ac by prefs.autoCapitalize.collectAsState(initial = true)
+            val sc2 by prefs.spacebarCursor.collectAsState(initial = true)
+            val lk by prefs.largeKeys.collectAsState(initial = false)
 
-            LaunchedEffect(clipboardEnabled) {
-                if (clipboardEnabled && clipboardHistory == null) {
-                    clipboardHistory = ClipboardHistory(this@HandBoardService)
-                    clipboardHistory?.initialize()
-                } else if (!clipboardEnabled) {
-                    clipboardHistory?.destroy()
-                    clipboardHistory = null
-                }
+            LaunchedEffect(ce) {
+                if (ce && clipboard == null) { clipboard = ClipboardHistory(this@HandBoardService); clipboard?.initialize() }
+                else if (!ce) { clipboard?.destroy(); clipboard = null }
             }
 
-            val layoutSwitcher = remember { LayoutSwitcher(layoutName) }
-            LaunchedEffect(layoutName) { layoutSwitcher.setLayout(layoutName) }
+            val ls = remember { LayoutSwitcher(ln) }
+            LaunchedEffect(ln) { ls.setLayout(ln) }
 
-            val suggestions = remember { mutableStateListOf<String>() }
-            val showPredictions = predictionsEnabled && !isPasswordField && !isNumberField
+            val sugs = remember { mutableStateListOf<String>() }
+            val showPred = pe && !isPassword && !isNumber
+            val effH = if (lk) hs * 1.25f else hs
 
-            val effectiveHeightScale = if (largeKeys) heightScale * 1.25f else heightScale
+            fun updateSugs() { sugs.clear(); if (showPred) sugs.addAll(predictor.predict(getWord(), sc)) }
 
-            fun updateSuggestions() {
-                suggestions.clear()
-                if (!showPredictions) return
-                val word = getCurrentWord()
-                suggestions.addAll(wordPredictor.predict(word, suggestionCount))
-            }
-
-            fun commitText(text: String) {
+            fun commit(text: String) {
                 val ic = currentInputConnection ?: return
-
-                // Auto-capitalize
-                val finalText = if (text.length == 1 && text[0].isLetter() &&
-                    shouldAutoCapitalize(autoCapitalize)) {
-                    text.uppercase()
-                } else text
-
-                ic.commitText(finalText, 1)
-
-                if (text == " ") {
-                    val word = getCurrentWord()
-                    if (word.isNotEmpty()) wordPredictor.onWordCommitted(word)
-                }
-                updateSuggestions()
+                val final = if (text.length == 1 && text[0].isLetter() && shouldCap(ac)) text.uppercase() else text
+                ic.commitText(final, 1)
+                if (text == " ") { val w = getWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w) }
+                updateSugs()
             }
 
-            fun applySuggestion(word: String) {
-                val current = getCurrentWord()
-                if (current.isNotEmpty()) {
-                    currentInputConnection?.deleteSurroundingText(current.length, 0)
-                }
+            fun applySug(word: String) {
+                val cur = getWord()
+                if (cur.isNotEmpty()) currentInputConnection?.deleteSurroundingText(cur.length, 0)
                 currentInputConnection?.commitText("$word ", 1)
-                wordPredictor.onWordCommitted(word)
-                updateSuggestions()
+                predictor.onWordCommitted(word)
+                updateSugs()
             }
 
-            val useDark = if (followSystemTheme) isSystemInDarkTheme() else true
+            val useDark = if (fst) isSystemInDarkTheme() else true
 
             HandBoardTheme(darkTheme = useDark) {
-                KeyboardWrapper(
-                    widthFraction = widthPercent / 100f,
-                    alignment = alignment
-                ) {
+                KeyboardWrapper(widthFraction = wp / 100f, alignment = al) {
                     KeyboardView(
-                        layoutSwitcher = layoutSwitcher,
-                        preferencesManager = preferencesManager,
-                        heightScale = effectiveHeightScale,
-                        hapticEnabled = hapticEnabled,
-                        soundEnabled = soundEnabled,
-                        numberRowEnabled = numberRowEnabled,
-                        spacebarCursor = spacebarCursor,
-                        clipboardEnabled = clipboardEnabled,
-                        clipboardHistory = if (clipboardEnabled) clipboardHistory else null,
-                        suggestionBar = if (showPredictions) {
-                            {
-                                SuggestionBar(
-                                    suggestions = suggestions,
-                                    onSuggestionClick = { applySuggestion(it) }
-                                )
-                            }
-                        } else null,
-                        onTextInput = { commitText(it) },
-                        onBackspace = {
-                            performBackspace()
-                            updateSuggestions()
-                        },
+                        layoutSwitcher = ls, preferencesManager = prefs,
+                        heightScale = effH, hapticEnabled = hap, soundEnabled = snd,
+                        numberRowEnabled = nr, spacebarCursor = sc2,
+                        clipboardEnabled = ce, clipboardHistory = if (ce) clipboard else null,
+                        suggestionBar = if (showPred) { { SuggestionBar(suggestions = sugs, onSuggestionClick = { applySug(it) }) } } else null,
+                        onTextInput = { commit(it) },
+                        onBackspace = { doBackspace(); updateSugs() },
                         onEnter = {
-                            val word = getCurrentWord()
-                            if (word.isNotEmpty()) wordPredictor.onWordCommitted(word)
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
-                            suggestions.clear()
+                            val w = getWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w)
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER); sugs.clear()
                         },
-                        onEmojiInput = { emoji ->
-                            currentInputConnection?.commitText(emoji, 1)
-                        },
-                        onCursorMove = { dir -> moveCursor(dir) },
-                        onCursorHome = { moveCursorHome() },
-                        onCursorEnd = { moveCursorEnd() },
-                        onSelectAll = { selectAll() },
-                        onCopy = { copyText() },
-                        onCut = { cutText() },
-                        onPaste = { pasteText() },
-                        onUndo = { undoAction() },
-                        onRedo = { redoAction() },
-                        onPasteImage = { pasteImage(it) }
+                        onEmojiInput = { currentInputConnection?.commitText(it, 1) },
+                        onCursorMove = { moveCursor(it) },
+                        onCursorHome = { sendKey(KeyEvent.KEYCODE_MOVE_HOME) },
+                        onCursorEnd = { sendKey(KeyEvent.KEYCODE_MOVE_END) },
+                        onSelectAll = { currentInputConnection?.performContextMenuAction(android.R.id.selectAll) },
+                        onCopy = { currentInputConnection?.performContextMenuAction(android.R.id.copy) },
+                        onCut = { currentInputConnection?.performContextMenuAction(android.R.id.cut) },
+                        onPaste = { currentInputConnection?.performContextMenuAction(android.R.id.paste) },
+                        onUndo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) },
+                        onRedo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) },
+                        onPasteImage = { pasteImg(it) }
                     )
-
-                    if (bottomPadding > 0) {
-                        Spacer(modifier = Modifier.fillMaxWidth().height(bottomPadding.dp))
-                    }
+                    if (bp > 0) Spacer(Modifier.fillMaxWidth().height(bp.dp))
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        clipboardHistory?.destroy()
-        clipboardHistory = null
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        super.onDestroy()
-    }
+    override fun onDestroy() { clipboard?.destroy(); clipboard = null; lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY); super.onDestroy() }
 }

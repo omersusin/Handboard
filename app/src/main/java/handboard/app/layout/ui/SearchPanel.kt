@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,101 +50,44 @@ import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
 import handboard.app.emoji.KaomojiData
 
-sealed class SearchResult(
-    val displayText: String,
-    val category: String,
-    val value: String
-) {
-    class EmojiResult(emoji: String, name: String) :
-        SearchResult(displayText = "$emoji  $name", category = "Emoji", value = emoji)
-
-    class KaomojiResult(kaomoji: String, categoryName: String) :
-        SearchResult(displayText = kaomoji, category = "Kaomoji · $categoryName", value = kaomoji)
-
-    class ClipboardResult(text: String) :
-        SearchResult(
-            displayText = text.take(80),
-            category = "Clipboard",
-            value = text
-        )
+sealed class SearchResult(val displayText: String, val category: String, val value: String) {
+    class EmojiResult(emoji: String, name: String) : SearchResult("$emoji  $name", "Emoji", emoji)
+    class KaomojiResult(kaomoji: String, cat: String) : SearchResult(kaomoji, "Kaomoji", kaomoji)
+    class ClipboardResult(text: String) : SearchResult(text.take(60), "Clipboard", text)
 }
 
-class SearchEngine(
-    private val clipboardHistory: ClipboardHistory?
-) {
-    // Common emoji search map
-    private val emojiSearch = mapOf(
-        "smile" to "😊", "laugh" to "😂", "cry" to "😢", "love" to "❤️",
-        "heart" to "❤️", "fire" to "🔥", "thumbs" to "👍", "ok" to "👌",
-        "wave" to "👋", "clap" to "👏", "pray" to "🙏", "strong" to "💪",
-        "star" to "⭐", "sun" to "☀️", "moon" to "🌙", "rain" to "🌧️",
-        "snow" to "❄️", "cloud" to "☁️", "tree" to "🌳", "flower" to "🌸",
-        "dog" to "🐶", "cat" to "🐱", "fish" to "🐟", "bird" to "🐦",
-        "check" to "✅", "cross" to "❌", "warning" to "⚠️", "stop" to "🛑",
-        "party" to "🎉", "cake" to "🎂", "gift" to "🎁", "music" to "🎵",
-        "phone" to "📱", "mail" to "📧", "clock" to "⏰", "key" to "🔑",
-        "lock" to "🔒", "search" to "🔍", "money" to "💰", "car" to "🚗",
-        "plane" to "✈️", "house" to "🏠", "food" to "🍔", "pizza" to "🍕",
-        "coffee" to "☕", "beer" to "🍺", "wine" to "🍷", "water" to "💧",
-        "rocket" to "🚀", "flag" to "🏁", "trophy" to "🏆", "medal" to "🏅",
-        "bomb" to "💣", "gem" to "💎", "ring" to "💍", "crown" to "👑",
-        "robot" to "🤖", "alien" to "👽", "ghost" to "👻", "skull" to "💀",
-        "poop" to "💩", "devil" to "😈", "angel" to "😇", "cool" to "😎",
-        "nerd" to "🤓", "think" to "🤔", "shush" to "🤫", "sleep" to "😴",
-        "sick" to "🤢", "angry" to "😡", "sad" to "😢", "happy" to "😊",
-        "wink" to "😉", "kiss" to "😘", "tongue" to "😛", "shock" to "😱",
-        "100" to "💯", "sparkle" to "✨", "rainbow" to "🌈", "lightning" to "⚡",
-        "earth" to "🌍", "world" to "🌍", "peace" to "☮️", "yin" to "☯️",
-        "up" to "⬆️", "down" to "⬇️", "left" to "⬅️", "right" to "➡️",
-        "plus" to "➕", "minus" to "➖", "question" to "❓", "exclaim" to "❗",
-        "idea" to "💡", "bulb" to "💡", "pin" to "📌", "pencil" to "✏️",
-        "book" to "📖", "calendar" to "📅", "chart" to "📊", "target" to "🎯",
-        "hand" to "✋", "point" to "👆", "fist" to "✊", "muscle" to "💪",
-        "eye" to "👁️", "brain" to "🧠", "baby" to "👶", "family" to "👨‍👩‍👧‍👦",
-        "shirt" to "👕", "shoe" to "👟", "hat" to "🎩", "glasses" to "👓",
-        "soccer" to "⚽", "basket" to "🏀", "tennis" to "🎾", "dice" to "🎲"
+class SearchEngine(private val clipboard: ClipboardHistory?) {
+    private val emojiMap = mapOf(
+        "smile" to "😊","laugh" to "😂","cry" to "😢","love" to "❤️","heart" to "❤️",
+        "fire" to "🔥","thumbs" to "👍","ok" to "👌","wave" to "👋","clap" to "👏",
+        "pray" to "🙏","star" to "⭐","sun" to "☀️","moon" to "🌙","dog" to "🐶",
+        "cat" to "🐱","check" to "✅","cross" to "❌","party" to "🎉","rocket" to "🚀",
+        "cool" to "😎","think" to "🤔","sleep" to "😴","angry" to "😡","sad" to "😢",
+        "happy" to "😊","wink" to "😉","kiss" to "😘","100" to "💯","sparkle" to "✨",
+        "idea" to "💡","phone" to "📱","mail" to "📧","money" to "💰","key" to "🔑",
+        "music" to "🎵","food" to "🍔","coffee" to "☕","pizza" to "🍕","car" to "🚗",
+        "house" to "🏠","book" to "📖","pencil" to "✏️","target" to "🎯","trophy" to "🏆"
     )
 
-    fun search(query: String): List<SearchResult> {
-        if (query.isBlank()) return emptyList()
-        val q = query.lowercase().trim()
+    fun search(q: String): List<SearchResult> {
+        if (q.isBlank()) return emptyList()
+        val query = q.lowercase().trim()
         val results = mutableListOf<SearchResult>()
 
-        // Search emojis
-        emojiSearch.entries
-            .filter { it.key.contains(q) }
-            .take(8)
-            .forEach { (name, emoji) ->
-                results.add(SearchResult.EmojiResult(emoji, name))
-            }
+        emojiMap.entries.filter { it.key.contains(query) }.take(6)
+            .forEach { (n, e) -> results.add(SearchResult.EmojiResult(e, n)) }
 
-        // Search kaomoji
         KaomojiData.categories.forEach { cat ->
-            cat.items.filter { it.lowercase().contains(q) }
-                .take(3)
-                .forEach { kaomoji ->
-                    results.add(SearchResult.KaomojiResult(kaomoji, cat.name))
-                }
+            cat.items.filter { it.lowercase().contains(query) }.take(2)
+                .forEach { results.add(SearchResult.KaomojiResult(it, cat.name)) }
         }
-        // Also search by category name
-        KaomojiData.categories
-            .filter { it.name.lowercase().contains(q) }
-            .take(2)
-            .forEach { cat ->
-                cat.items.take(3).forEach { kaomoji ->
-                    results.add(SearchResult.KaomojiResult(kaomoji, cat.name))
-                }
-            }
+        KaomojiData.categories.filter { it.name.lowercase().contains(query) }.take(1)
+            .forEach { cat -> cat.items.take(3).forEach { results.add(SearchResult.KaomojiResult(it, cat.name)) } }
 
-        // Search clipboard
-        clipboardHistory?.items
-            ?.filter { it.text?.lowercase()?.contains(q) == true }
-            ?.take(3)
-            ?.forEach { item ->
-                item.text?.let { results.add(SearchResult.ClipboardResult(it)) }
-            }
+        clipboard?.items?.filter { it.text?.lowercase()?.contains(query) == true }?.take(3)
+            ?.forEach { it.text?.let { t -> results.add(SearchResult.ClipboardResult(t)) } }
 
-        return results.take(15)
+        return results.take(12)
     }
 }
 
@@ -157,157 +101,85 @@ fun SearchPanel(
     val engine = remember(clipboardHistory) { SearchEngine(clipboardHistory) }
     var query by remember { mutableStateOf("") }
     val results = remember { mutableStateListOf<SearchResult>() }
-    val focusRequester = remember { FocusRequester() }
-    val panelHeight = (220 * heightScale).dp
+    val focus = remember { FocusRequester() }
+    val panelHeight = (200 * heightScale).dp
 
-    LaunchedEffect(query) {
-        results.clear()
-        if (query.isNotBlank()) {
-            results.addAll(engine.search(query))
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        try { focusRequester.requestFocus() } catch (_: Exception) {}
-    }
+    LaunchedEffect(query) { results.clear(); if (query.isNotBlank()) results.addAll(engine.search(query)) }
+    LaunchedEffect(Unit) { try { focus.requestFocus() } catch (_: Exception) {} }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .background(KeyboardBackground)
+        modifier = Modifier.fillMaxWidth().wrapContentHeight().background(KeyboardBackground)
     ) {
-        // Search bar
+        // Search input
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            Row(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(KeyBackground)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (query.isEmpty()) {
-                    Text(
-                        text = "🔍  Search emoji, kaomoji, clipboard...",
-                        color = KeyTextDim,
-                        fontSize = 14.sp
+                SearchIcon(tint = KeyTextDim, size = 16.dp)
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) Text("Search...", color = KeyTextDim, fontSize = 14.sp)
+                    BasicTextField(
+                        value = query, onValueChange = { query = it },
+                        textStyle = TextStyle(color = KeyText, fontSize = 14.sp),
+                        cursorBrush = SolidColor(ShiftActiveBackground),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus)
                     )
                 }
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    textStyle = TextStyle(
-                        color = KeyText,
-                        fontSize = 14.sp
-                    ),
-                    cursorBrush = SolidColor(ShiftActiveBackground),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                )
             }
-
             Spacer(Modifier.width(6.dp))
-
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(ActionKeyBackground)
-                    .clickable { onClose() }
-                    .semantics {
-                        contentDescription = "Close search"
-                        role = Role.Button
-                    }
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(ActionKeyBackground)
+                    .clickable { onClose() }.semantics { contentDescription = "Close"; role = Role.Button },
                 contentAlignment = Alignment.Center
-            ) {
-                Text(text = "✕", color = KeyText, fontSize = 16.sp)
-            }
+            ) { Text("✕", color = KeyText, fontSize = 14.sp) }
         }
 
         // Results
         if (results.isEmpty() && query.isNotBlank()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(panelHeight),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No results for \"$query\"",
-                    color = KeyTextDim,
-                    fontSize = 14.sp
-                )
+            Box(Modifier.fillMaxWidth().height(panelHeight), contentAlignment = Alignment.Center) {
+                Text("No results for \"$query\"", color = KeyTextDim, fontSize = 13.sp)
             }
         } else if (results.isNotEmpty()) {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(panelHeight),
+                modifier = Modifier.fillMaxWidth().height(panelHeight),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                items(results) { result ->
+                items(results) { r ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(KeyBackground)
-                            .clickable { onResultClick(result.value) }
-                            .semantics {
-                                contentDescription = "Insert ${result.displayText}"
-                                role = Role.Button
-                            }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(KeyBackground)
+                            .clickable { onResultClick(r.value) }
+                            .semantics { contentDescription = "Insert ${r.displayText}"; role = Role.Button }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = result.displayText,
-                            color = KeyText,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Text(r.displayText, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = result.category,
-                            color = KeyTextDim,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(ActionKeyBackground.copy(alpha = 0.6f)).padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(r.category, color = KeyTextDim, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
             }
         } else {
-            // Empty state — show popular
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(panelHeight),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(Modifier.fillMaxWidth().height(panelHeight), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "🔍", fontSize = 32.sp)
+                    SearchIcon(tint = KeyTextDim, size = 32.dp)
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Search emoji, kaomoji, or clipboard",
-                        color = KeyTextDim,
-                        fontSize = 13.sp
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Try: smile, heart, dog, fire, party...",
-                        color = KeyTextDim.copy(alpha = 0.6f),
-                        fontSize = 12.sp
-                    )
+                    Text("Search emoji, kaomoji, clipboard", color = KeyTextDim, fontSize = 13.sp)
+                    Text("Try: smile, heart, party, dog...", color = KeyTextDim.copy(alpha = 0.5f), fontSize = 11.sp)
                 }
             }
         }

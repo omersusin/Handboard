@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import handboard.app.clipboard.ClipboardHistory
 import handboard.app.clipboard.ClipboardItem
@@ -79,10 +81,15 @@ fun KeyboardView(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
+            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
             .background(KeyboardBackground)
     ) {
-        if (currentPanel == KeyboardPanel.KEYBOARD) suggestionBar?.invoke()
+        // Suggestion bar
+        if (currentPanel == KeyboardPanel.KEYBOARD) {
+            suggestionBar?.invoke()
+        }
 
+        // Toolbar
         LayoutToolbar(
             currentLayoutName = layoutSwitcher.currentLayoutName,
             currentPanel = currentPanel,
@@ -96,6 +103,7 @@ fun KeyboardView(
             onSwitchPanel = { currentPanel = it }
         )
 
+        // Unified panel container
         when (currentPanel) {
             KeyboardPanel.KEYBOARD -> {
                 key(layoutSwitcher.currentLayoutName, state.currentLayer) {
@@ -103,18 +111,22 @@ fun KeyboardView(
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight()
-                            .padding(horizontal = 3.dp)
-                            .padding(bottom = 8.dp)
+                            .padding(horizontal = 4.dp)
+                            .padding(bottom = 6.dp)
                     ) {
+                        // Number row
                         if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().background(NumberRowBackground).padding(vertical = 1.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(NumberRowBackground)
+                                    .padding(vertical = 1.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 numberRow.forEach { kd ->
                                     KeyView(
-                                        modifier = Modifier.weight(1f), keyData = kd,
-                                        isShifted = false, isCapsLock = false,
+                                        modifier = Modifier.weight(1f),
+                                        keyData = kd, isShifted = false, isCapsLock = false,
                                         currentLayer = state.currentLayer,
                                         heightScale = heightScale * 0.8f,
                                         hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
@@ -124,14 +136,21 @@ fun KeyboardView(
                             }
                         }
 
+                        // Key rows
                         currentRows.forEach { row ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)
+                            ) {
                                 row.forEach { kd ->
                                     KeyView(
-                                        modifier = Modifier.weight(kd.widthWeight), keyData = kd,
-                                        isShifted = state.shouldUpperCase, isCapsLock = state.isCapsLock,
-                                        currentLayer = state.currentLayer, heightScale = heightScale,
-                                        hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
+                                        modifier = Modifier.weight(kd.widthWeight),
+                                        keyData = kd,
+                                        isShifted = state.shouldUpperCase,
+                                        isCapsLock = state.isCapsLock,
+                                        currentLayer = state.currentLayer,
+                                        heightScale = heightScale,
+                                        hapticEnabled = hapticEnabled,
+                                        soundEnabled = soundEnabled,
                                         onCursorMove = if (spacebarCursor && kd.action is KeyAction.Space) {
                                             { dir -> onCursorMove(dir) }
                                         } else null,
@@ -147,9 +166,11 @@ fun KeyboardView(
                 }
             }
 
-            KeyboardPanel.EMOJI -> EmojiView(heightScale = heightScale, onEmojiClick = { onEmojiInput(it) }, onBackspace = onBackspace)
+            KeyboardPanel.EMOJI -> PanelContainer {
+                EmojiView(heightScale = heightScale, onEmojiClick = { onEmojiInput(it) }, onBackspace = onBackspace)
+            }
 
-            KeyboardPanel.CLIPBOARD -> {
+            KeyboardPanel.CLIPBOARD -> PanelContainer {
                 if (clipboardHistory != null) {
                     ClipboardView(clipboardHistory = clipboardHistory, heightScale = heightScale,
                         onPasteText = { onTextInput(it) }, onPasteImage = { onPasteImage(it) },
@@ -157,9 +178,11 @@ fun KeyboardView(
                 }
             }
 
-            KeyboardPanel.KAOMOJI -> KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
+            KeyboardPanel.KAOMOJI -> PanelContainer {
+                KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
+            }
 
-            KeyboardPanel.TEXT_EDITING -> {
+            KeyboardPanel.TEXT_EDITING -> PanelContainer {
                 TextEditingBar(
                     onCursorLeft = { onCursorMove(-1) }, onCursorRight = { onCursorMove(1) },
                     onCursorHome = onCursorHome, onCursorEnd = onCursorEnd,
@@ -169,18 +192,27 @@ fun KeyboardView(
                 )
             }
 
-            KeyboardPanel.SEARCH -> {
+            KeyboardPanel.SEARCH -> PanelContainer {
                 SearchPanel(
                     heightScale = heightScale,
                     clipboardHistory = if (clipboardEnabled) clipboardHistory else null,
-                    onResultClick = { value ->
-                        onTextInput(value)
-                        currentPanel = KeyboardPanel.KEYBOARD
-                    },
+                    onResultClick = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD },
                     onClose = { currentPanel = KeyboardPanel.KEYBOARD }
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PanelContainer(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .padding(bottom = 6.dp)
+    ) {
+        content()
     }
 }
 

@@ -4,174 +4,217 @@
 
 **One-handed keyboard for everyone**
 
-An accessibility-focused Android keyboard designed for people who use their phone with one hand, one finger, or have limited mobility.
+An accessibility-focused Android keyboard designed for people who type with one hand, one finger, or have limited mobility.
 
 [![Build](https://github.com/omersusin/Handboard/actions/workflows/build.yml/badge.svg)](https://github.com/omersusin/Handboard/actions/workflows/build.yml)
 [![API 24+](https://img.shields.io/badge/API-24%2B-brightgreen.svg)](https://developer.android.com/about/versions/nougat)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0-purple.svg)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-UI-blue.svg)](https://developer.android.com/jetpack/compose)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
----
-
-[Features](#features) • [Download](#download) • [Layouts](#layouts) • [Screenshots](#screenshots) • [Setup](#setup) • [Build](#build) • [Contributing](#contributing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
 
 ---
 
-## 🎯 Who Is This For?
+## Who Is This For?
 
-HandBoard is built for people who:
+HandBoard is designed for people who:
 
-- 👆 Use their phone with **one hand**
-- 👍 Type with only their **thumb**
-- 🤚 Can only use their **right** or **left** hand
-- ☝️ Type with a **single finger**
-- ♿ Have **limited mobility** or a **physical disability**
-- 🧏 Need an **accessible** keyboard experience
-
-Standard keyboards assume two-handed use. HandBoard doesn't.
+- use their phone with **one hand**
+- type mostly with their **thumb**
+- can only use their **right or left hand**
+- type with a **single finger**
+- have **limited mobility**
+- need a more **accessible keyboard**
 
 ---
 
-## ✨ Features
+## Features
 
-### Keyboard
-- 🎹 **4 keyboard layouts** — QWERTY, Right Hand, Left Hand, Thumb
-- 🔤 **Shift & Caps Lock** with visual feedback
-- ⌫ **Hold-to-repeat backspace** — hold down to delete continuously
-- 🔢 **Symbol & number layer** — switch with one tap
-- 🌐 **Quick layout switching** — cycle through layouts from the toolbar
+### Keyboard Layouts
 
-### Emoji & Clipboard
-- 😊 **3600+ emojis** — powered by Google's emoji2-emojipicker
-- 🎨 **Skin tone variants** — long press for options
-- 📋 **Clipboard history** — remembers copied text
-- 🖼️ **Image paste support** — paste screenshots and images (Android 7.1+)
+- **QWERTY** — standard 4-row layout
+- **Right Hand** — 5-column compact layout with controls on the right
+- **Left Hand** — 5-column compact layout with controls on the left
+- **Thumb** — 5-column layout optimized for thumb typing
+- **Two symbol layers** — common symbols plus extended characters
+- **Optional number row** — toggle in settings
+
+### Typing
+
+- **Long-press accented characters** — à, é, ñ, ü, ş, ğ, ö and more
+- **Spacebar cursor control** — swipe left/right to move cursor
+- **Auto-capitalize** after sentences
+- **Hold backspace** for continuous delete
+- **Emoji-aware backspace** — prevents breaking multi-byte characters
+
+### Text Editing Panel
+
+- Cursor arrows — **left, right, home, end**
+- **Select All / Copy / Cut / Paste**
+- **Undo / Redo**
+
+### Emoji
+
+- **3600+ emojis** via Google emoji2-emojipicker
+- **Skin tone variants**
+- **Search**
+
+### Kaomoji
+
+- **100+ kaomoji** in categories
+- **Grid layout** for quick browsing
+
+### Inline Search
+
+Search **emoji, kaomoji, and clipboard items** from a single panel.
+
+Results appear instantly while typing.
+
+### Clipboard
+
+- **Clipboard history** (opt-in)
+- **Image paste support** (Android 7.1+)
+- **Clear all** with one tap
 
 ### Word Prediction
-- 💬 **Smart suggestions** — Trie + Bigram engine
-- 📚 **400+ word dictionary** — English (US) built-in
-- 🧠 **Learns from you** — gets smarter as you type
-- 🔢 **Adjustable suggestion count** — show 1 to 5 suggestions
+
+- **Trie + Bigram prediction engine**
+- **Small built-in dictionary**
+- **Persistent learning**
+- **Auto-disabled in password fields**
+- **1–5 suggestions adjustable**
 
 ### Customization
-- 📏 **Keyboard height** — scale from 0.7x to 1.5x
-- 📐 **Keyboard width** — 50% to 100% of screen
-- ◀️ **Position** — left, center, or right aligned
-- 📱 **Bottom padding** — fix navigation bar overlap
-- 📳 **Haptic feedback** — toggle vibration on/off
-- 🎨 **Material You** — dynamic colors on Android 12+, purple fallback on older versions
+
+- Keyboard **height** (0.7x – 1.5x)
+- Keyboard **width** (50% – 100%)
+- Keyboard **alignment** (left / center / right)
+- **Bottom padding** adjustment
+- **Haptic feedback**
+- **Key sound**
+- **Material You theme (Android 12+)**
+- **Light / Dark keyboard**
+- **Follow system theme**
 
 ### Accessibility
-- ♿ Designed from the ground up for one-handed use
-- 🎯 Large touch targets
-- 🔍 Clear visual feedback on key press
-- 🌙 Dark theme for reduced eye strain
+
+- **Large keys mode**
+- **High contrast option**
+- **TalkBack-friendly semantics**
+- **Predictions disabled on password fields**
+- **Clipboard disabled by default**
 
 ---
 
-## 📥 Download
+## Download
 
-### From GitHub Releases
-1. Go to the [Releases](https://github.com/omersusin/Handboard/releases) page
-2. Download the latest `HandBoard-v*.apk`
-3. Install on your Android device (allow unknown sources if prompted)
+Download the latest APK from:
 
-### From GitHub Actions
-1. Go to [Actions](https://github.com/omersusin/Handboard/actions)
-2. Click the latest successful build
-3. Download the `HandBoard-debug` artifact
+https://github.com/omersusin/Handboard/releases
 
-> **Minimum:** Android 7.0 (API 24)
-> **Recommended:** Android 12+ for Material You theming
+**Minimum Android version:** Android 7.0 (API 24)
 
 ---
 
-## 🎹 Layouts
+## Setup
 
-| Layout | Best For | Description |
-|---|---|---|
-| **QWERTY** | General use | Standard layout, 4 rows |
-| **Right Hand** | Right-handed users | 5-column compact, controls on right |
-| **Left Hand** | Left-handed users | 5-column compact, controls on left |
-| **Thumb** | Single thumb typing | 5-column, extra rows, large keys |
-
-All layouts include:
-- Full alphabet (a–z)
-- Symbol/number layer
-- Shift, Backspace, Enter, Space
-- Quick access to Emoji and Clipboard
+1. Install the APK
+2. Open **HandBoard**
+3. Tap **Open Settings**
+4. Enable **HandBoard keyboard**
+5. Tap **Select Keyboard**
+6. Choose **HandBoard**
+7. Customize in **Keyboard Settings**
 
 ---
 
-## 🛠️ Setup
+## Build From Source
 
-After installing the APK:
+Requirements:
 
-1. **Open HandBoard** app
-2. Tap **"Open Settings"** → Enable HandBoard in system keyboard list
-3. Go back → Tap **"Select Keyboard"** → Choose HandBoard
-4. Open any app with a text field → HandBoard appears!
-
-### Customize
-- Open HandBoard app → Tap **"⚙ Keyboard Settings"**
-- Adjust layout, size, position, predictions, haptic feedback
-
----
-
-## 🏗️ Build
-
-### Prerequisites
 - JDK 17
-- Android SDK (compileSdk 35)
-- Gradle 8.7+
+- Android SDK
+- compileSdk 35
 
-### Build locally
-```bash
+Clone repository:
+
 git clone https://github.com/omersusin/Handboard.git
 cd Handboard
-./gradlew assembleDebug
-HandBoard/
-├── app/src/main/
-│   ├── java/handboard/app/
-│   │   ├── core/theme/       → Material You theme, colors, typography
-│   │   ├── ime/              → InputMethodService, Compose IME helper
-│   │   ├── layout/           → Layout engine, key models, 4 layouts
-│   │   │   └── ui/           → KeyView, KeyboardView, toolbar, icons
-│   │   ├── prediction/       → Trie + Bigram word predictor
-│   │   ├── emoji/            → Google emoji2 picker integration
-│   │   ├── clipboard/        → Clipboard history with image support
-│   │   └── settings/         → DataStore preferences, settings UI
-│   ├── assets/
-│   │   └── en_us.txt         → English dictionary (400+ words)
-│   └── res/
-│       ├── values/strings.xml
-│       └── xml/method.xml    → IME configuration
-├── .github/workflows/
-│   ├── build.yml             → CI build on every push
-│   └── release.yml           → Release APK on version tag
-└── build.gradle.kts
-cat > LICENSE << 'EOF'
+
+Build debug APK:
+
+gradle assembleDebug
+
+Output file:
+
+app/build/outputs/apk/debug/app-debug.apk
+
+---
+
+## Tech Stack
+
+Language: Kotlin  
+UI: Jetpack Compose  
+IME: Android InputMethodService  
+Theme: Material 3 / Material You  
+Emoji: emoji2-emojipicker  
+Prediction: Trie + Bigram engine  
+Storage: DataStore Preferences  
+CI/CD: GitHub Actions  
+
+---
+
+## Project Structure
+
+app/src/main/java/handboard/app/
+
+core/theme/ → Colors, Theme, Typography  
+ime/ → HandBoardService, ComposeIMEHelper  
+layout/ → Keyboard layouts, key actions, state logic  
+layout/ui/ → KeyboardView, KeyView, Toolbar, Panels  
+prediction/ → Trie dictionary, WordPredictor, SuggestionBar  
+emoji/ → EmojiView, KaomojiView  
+clipboard/ → ClipboardHistory, ClipboardView  
+settings/ → PreferencesManager, SettingsScreen  
+
+---
+
+## Known Limitations
+
+- Dictionary is still small
+- No swipe typing (intentional design)
+- Image paste depends on target app support
+- Undo / redo relies on key events
+
+---
+
+## Roadmap
+
+- More languages
+- Custom layouts
+- Arc / radial layout
+- GIF panel
+- Sticker panel
+- Voice input
+- Tablet / split keyboard
+- Personal dictionary UI
+
+---
+
+## License
+
 MIT License
 
-Copyright (c) 2025 Ömer
+---
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## Contact
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Email: tekgercek73@gmail.com  
+GitHub: https://github.com/omersusin  
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+<div align="center">
+
+Made with ❤️ for accessibility
+
+</div>
+

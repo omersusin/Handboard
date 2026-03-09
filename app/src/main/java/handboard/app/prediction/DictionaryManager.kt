@@ -12,7 +12,6 @@ class DictionaryManager(private val context: Context) {
     fun getAvailable(): List<DictionaryInfo> {
         val list = mutableListOf<DictionaryInfo>()
         
-        // 1. Assets (Gömülü sözlükler)
         try {
             context.assets.list("")?.filter { it.endsWith(".txt") && !it.contains("bigram") }?.forEach { f ->
                 val id = f.removeSuffix(".txt")
@@ -21,7 +20,6 @@ class DictionaryManager(private val context: Context) {
             }
         } catch (_: Exception) {}
 
-        // 2. Kullanıcı Yüklemeleri (Custom dicts)
         val dictDir = File(context.filesDir, "dictionaries")
         if (dictDir.exists()) {
             dictDir.listFiles()?.filter { it.extension == "txt" || it.extension == "dict" }?.forEach { f ->
@@ -41,11 +39,13 @@ class DictionaryManager(private val context: Context) {
 
             reader.use { r ->
                 r.forEachLine { line ->
-                    val parts = line.split('\t')
-                    if (parts.size >= 2) {
-                        val word = parts[0].trim().lowercase()
-                        val freq = parts[1].trim().toIntOrNull() ?: 1
-                        if (word.isNotEmpty()) trie.insert(word, freq)
+                    val trimmed = line.trim()
+                    if (trimmed.isNotEmpty()) {
+                        // Boşluk, sekme vs. ne varsa ayır. Frekans yoksa varsayılan 500 ata.
+                        val parts = trimmed.split(Regex("\\s+"), limit = 2)
+                        val word = parts[0].lowercase()
+                        val freq = if (parts.size > 1) parts[1].toIntOrNull() ?: 500 else 500
+                        if (word.length in 1..30) trie.insert(word, freq)
                     }
                 }
             }
@@ -53,13 +53,13 @@ class DictionaryManager(private val context: Context) {
     }
 
     fun loadBigrams(dictId: String, bigramMap: HashMap<String, HashMap<String, Int>>) {
-        if (dictId.startsWith("ext_")) return // Harici sözlüklerde bigram şimdilik yok
+        if (dictId.startsWith("ext_")) return 
         try {
             BufferedReader(InputStreamReader(context.assets.open("${dictId}_bigrams.txt"))).use { r ->
                 r.forEachLine { line ->
-                    val parts = line.split('\t')
+                    val parts = line.split(Regex("\\s+"))
                     if (parts.size >= 3) {
-                        bigramMap.getOrPut(parts[0].trim().lowercase()) { HashMap() }[parts[1].trim().lowercase()] = parts[2].trim().toIntOrNull() ?: 1
+                        bigramMap.getOrPut(parts[0].lowercase()) { HashMap() }[parts[1].lowercase()] = parts[2].toIntOrNull() ?: 1
                     }
                 }
             }

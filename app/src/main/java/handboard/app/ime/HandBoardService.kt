@@ -36,8 +36,8 @@ import handboard.app.layout.ui.KeyboardWrapper
 import handboard.app.prediction.SuggestionBar
 import handboard.app.prediction.WordPredictor
 import handboard.app.settings.PreferencesManager
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -56,8 +56,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         prefs = PreferencesManager(this)
-        val dictId = runBlocking { prefs.dictionaryId.first() }
-        predictor.loadDictionary(this, dictId)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -97,6 +95,30 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         currentInputConnection?.sendKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_UP, code, 0, meta))
     }
 
+    private fun shouldAutoCapitalize(autoCapEnabled: Boolean): Boolean {
+        if (!autoCapEnabled || isPasswordField) return false
+        val ic = currentInputConnection ?: return false
+        val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return true
+        if (before.isEmpty()) return true
+        val trimmed = before.trimEnd()
+        if (trimmed.isEmpty()) return before.isNotEmpty()
+        return trimmed.last() in listOf('.', '!', '?', '\n')
+    }
+
+    private fun pasteImage(item: ClipboardItem) {
+        val uri = item.imageUri ?: return
+        val ic = currentInputConnection ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            try {
+                val desc = android.content.ClipDescription("image", arrayOf(item.mimeType))
+                val info = InputContentInfo(uri, desc, null)
+                ic.commitContent(info, InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
+            } catch (_: Exception) { item.text?.let { ic.commitText(it, 1) } }
+        } else {
+            item.text?.let { ic.commitText(it, 1) }
+        }
+    }
+
     override fun onCreateInputView(): View {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         return createComposeView(this, this) {
@@ -123,16 +145,27 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 val bp by prefs.bottomPadding.collectAsState(initial = 0)
                 val ce by prefs.clipboardEnabled.collectAsState(initial = false)
                 val nr by prefs.numberRowEnabled.collectAsState(initial = false)
-                val ac by prefs.autoCapitalize.collectAsState(initial = true)
+                val autoCap by prefs.autoCapitalize.collectAsState(initial = true)
                 val sc2 by prefs.spacebarCursor.collectAsState(initial = true)
                 val lk by prefs.largeKeys.collectAsState(initial = false)
-                val dictId by prefs.dictionaryId.collectAsState(initial = "en_us")
+                
+                // Multi-dictionary bindings
+                val multiEnabled by prefs.multilingualEnabled.collectAsState(initial = false)
+                val activeDicts by prefs.activeDicts.collectAsState(initial = setOf("en_us"))
 
                 LaunchedEffect(ce) {
                     if (ce && clipboard == null) { clipboard = ClipboardHistory(this@HandBoardService); clipboard?.initialize() }
                     else if (!ce) { clipboard?.destroy(); clipboard = null }
                 }
-                LaunchedEffect(dictId) { predictor.reloadDictionary(this@HandBoardService, dictId) }
+                
+                // Load dictionaries on IO Thread to prevent UI freeze
+                LaunchedEffect(multiEnabled, activeDicts) {
+                    withContext(Dispatchers.IO) {
+                        val toLoad = if (multiEnabled) activeDicts else setOf(activeDicts.firstOrNull() ?: "en_us")
+                        predictor.loadDictionaries(this@HandBoardService, toLoad)
+                    }
+                }
+
                 val ls = remember { LayoutSwitcher(ln) }
                 LaunchedEffect(ln) { ls.setLayout(ln) }
 
@@ -157,7 +190,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                             updateSuggestions()
                         }) } } else null,
                         onTextInput = { text ->
-                            val final = if (text.length == 1 && text[0].isLetter() && ac && !isPasswordField) {
+                            val final = if (text.length == 1 && text[0].isLetter() && autoCap && !isPasswordField) {
                                 val b = currentInputConnection?.getTextBeforeCursor(2, 0)?.toString() ?: ""
                                 if (b.isEmpty() || b.trimEnd().lastOrNull() in listOf('.', '!', '?', '\n')) text.uppercase() else text
                             } else text
@@ -170,7 +203,8 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                         onEmojiInput = { currentInputConnection?.commitText(it, 1) },
                         onCursorMove = { moveCursor(it) }, onCursorHome = { sendKey(KeyEvent.KEYCODE_MOVE_HOME) }, onCursorEnd = { sendKey(KeyEvent.KEYCODE_MOVE_END) },
                         onSelectAll = { currentInputConnection?.performContextMenuAction(android.R.id.selectAll) }, onCopy = { currentInputConnection?.performContextMenuAction(android.R.id.copy) }, onCut = { currentInputConnection?.performContextMenuAction(android.R.id.cut) }, onPaste = { currentInputConnection?.performContextMenuAction(android.R.id.paste) },
-                        onUndo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) }, onRedo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) }
+                        onUndo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) }, onRedo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) },
+                        onPasteImage = { pasteImage(it) }
                     )
                     if (bp > 0) Spacer(Modifier.fillMaxWidth().height(bp.dp))
                 }

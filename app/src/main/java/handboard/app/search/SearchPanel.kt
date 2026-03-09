@@ -22,6 +22,7 @@ import handboard.app.core.theme.KeyText
 import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
+import handboard.app.layout.ui.*
 import java.net.URLEncoder
 
 @Composable
@@ -55,7 +56,7 @@ fun SearchPanel(
         } else {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp).background(KeyboardBackground).padding(6.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(10.dp)) {
+                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(KeyBackground).clickable { openSearch(query) }.padding(10.dp)) {
                         if (query.isEmpty()) Text("🔍 Google Search...", color = KeyTextDim, fontSize = 14.sp)
                         else Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(query, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -83,8 +84,10 @@ fun SearchPanel(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { openSearch(suggestion) }.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = "🔍", fontSize = 14.sp, modifier = Modifier.padding(end = 8.dp))
-                            Text(text = suggestion, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            SearchIcon(tint = KeyTextDim, size = 16.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(text = suggestion, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), fontWeight = if (suggestion.startsWith(query, true)) FontWeight.Normal else FontWeight.Bold)
+                            TravelExploreIcon(tint = ShiftActiveBackground, size = 16.dp)
                         }
                     }
                 }

@@ -8,12 +8,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import handboard.app.layout.ui.CopyIcon
+import handboard.app.layout.ui.*
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -35,42 +29,55 @@ fun InKeyboardBrowser(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val iconTint = MaterialTheme.colorScheme.onSurface
+    val disabledTint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+
     var webView by remember { mutableStateOf<WebView?>(null) }
     var currentUrl by remember { mutableStateOf(url) }
-    var pageTitle by remember { mutableStateOf("Loading...") }
+    var pageTitle by remember { mutableStateOf("Yükleniyor…") }
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
     var isLoading by remember { mutableStateOf(true) }
 
-    Column(modifier = modifier.fillMaxWidth().fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
         Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
             Column {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { webView?.destroy(); onClose() }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Close, "Close", Modifier.size(18.dp)) }
-                    IconButton(onClick = { webView?.goBack() }, enabled = canGoBack, modifier = Modifier.size(32.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", Modifier.size(18.dp)) }
-                    IconButton(onClick = { webView?.goForward() }, enabled = canGoForward, modifier = Modifier.size(32.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Forward", Modifier.size(18.dp)) }
-                    IconButton(onClick = { webView?.reload() }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Reload", Modifier.size(16.dp)) }
+                    IconButton(onClick = { webView?.destroy(); onClose() }, modifier = Modifier.size(32.dp)) { CloseIcon(tint = iconTint, size = 18.dp) }
+                    IconButton(onClick = { webView?.goBack() }, enabled = canGoBack, modifier = Modifier.size(32.dp)) { BackArrowIcon(tint = if (canGoBack) iconTint else disabledTint, size = 18.dp) }
+                    IconButton(onClick = { webView?.goForward() }, enabled = canGoForward, modifier = Modifier.size(32.dp)) { ForwardArrowIcon(tint = if (canGoForward) iconTint else disabledTint, size = 18.dp) }
+                    IconButton(onClick = { webView?.reload() }, modifier = Modifier.size(32.dp)) { RefreshIcon(tint = iconTint, size = 16.dp) }
 
                     Column(modifier = Modifier.weight(1f).padding(horizontal = 6.dp)) {
                         Text(pageTitle, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface)
                         Text(currentUrl.removePrefix("https://").removePrefix("www."), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
-                    // KENDİ ÇİZDİĞİMİZ CopyIcon() KULLANILDI!
                     IconButton(
                         onClick = {
-                            val cb = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            cb.setPrimaryClip(android.content.ClipData.newPlainText("URL", currentUrl))
-                        }, modifier = Modifier.size(32.dp)
-                    ) { CopyIcon(tint = MaterialTheme.colorScheme.onSurface, size = 16.dp) }
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("URL", currentUrl))
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) { ContentCopyIcon(tint = iconTint, size = 16.dp) }
 
-                    IconButton(onClick = { onCommitText(currentUrl) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Share, "Paste", Modifier.size(14.dp)) }
+                    IconButton(onClick = { onCommitText(currentUrl) }, modifier = Modifier.size(32.dp)) { ShareIcon(tint = iconTint, size = 16.dp) }
                 }
-                AnimatedVisibility(visible = isLoading) { LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().height(2.dp)) }
+
+                AnimatedVisibility(visible = isLoading) {
+                    LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().height(2.dp))
+                }
             }
         }
 
@@ -86,20 +93,27 @@ fun InKeyboardBrowser(
                         builtInZoomControls = true
                         displayZoomControls = false
                         setSupportZoom(true)
+                        allowContentAccess = true
                         mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                        userAgentString = settings.userAgentString.replace("wv", "")
+                        cacheMode = WebSettings.LOAD_DEFAULT
                     }
                     webViewClient = object : WebViewClient() {
-                        override fun onPageStarted(v: WebView?, p: String?, f: Bitmap?) { isLoading = true; p?.let { currentUrl = it } }
-                        override fun onPageFinished(v: WebView?, p: String?) {
-                            isLoading = false; canGoBack = v?.canGoBack() ?: false; canGoForward = v?.canGoForward() ?: false
-                            p?.let { currentUrl = it }; v?.title?.let { pageTitle = it }
+                        override fun onPageStarted(view: WebView?, pageUrl: String?, favicon: Bitmap?) { isLoading = true; pageUrl?.let { currentUrl = it } }
+                        override fun onPageFinished(view: WebView?, pageUrl: String?) {
+                            isLoading = false
+                            canGoBack = view?.canGoBack() ?: false
+                            canGoForward = view?.canGoForward() ?: false
+                            pageUrl?.let { currentUrl = it }
+                            view?.title?.let { pageTitle = it }
                         }
-                        override fun shouldOverrideUrlLoading(v: WebView?, r: WebResourceRequest?): Boolean = false
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
                     }
                     webChromeClient = object : WebChromeClient() {
-                        override fun onProgressChanged(v: WebView?, p: Int) { progress = p; if (p == 100) isLoading = false }
-                        override fun onReceivedTitle(v: WebView?, t: String?) { t?.let { pageTitle = it } }
+                        override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                            progress = newProgress
+                            if (newProgress == 100) isLoading = false
+                        }
+                        override fun onReceivedTitle(view: WebView?, title: String?) { title?.let { pageTitle = it } }
                     }
                     loadUrl(url)
                     webView = this

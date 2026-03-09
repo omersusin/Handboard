@@ -8,9 +8,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import handboard.app.core.theme.ActionKeyBackground
@@ -27,7 +23,7 @@ import handboard.app.core.theme.KeyText
 import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
-import handboard.app.layout.ui.CopyIcon
+import handboard.app.layout.ui.*
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 
@@ -46,6 +42,9 @@ fun CurrencyPanel(
     val scope = rememberCoroutineScope()
     val currencies = repo.currencies
 
+    val iconTint = MaterialTheme.colorScheme.onSurface
+    val primaryTint = MaterialTheme.colorScheme.primary
+
     var from by remember { mutableStateOf("USD") }
     var to by remember { mutableStateOf("TRY") }
     var result by remember { mutableStateOf<String?>(null) }
@@ -55,41 +54,62 @@ fun CurrencyPanel(
     val amount = amountStr.toDoubleOrNull() ?: 1.0
 
     LaunchedEffect(Unit) { repo.loadRates("USD") }
+
     LaunchedEffect(amount, from, to, rates) {
         result = if (rates.isNotEmpty()) repo.convert(amount, from, to)?.let { fmt.format(it) } else null
     }
 
     Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp).background(KeyboardBackground).padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Header
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("💱 Currency Converter", color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(8.dp)) { Text("✕", color = KeyText, fontSize = 12.sp) }
+            Text("💱 Döviz Çevirici", color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Row {
+                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { scope.launch { repo.loadRates(from) } }.padding(8.dp)) {
+                    RefreshIcon(tint = KeyText, size = 14.dp)
+                }
+                Spacer(Modifier.width(8.dp))
+                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(8.dp)) {
+                    Text("✕", color = KeyText, fontSize = 12.sp)
+                }
+            }
         }
 
-        if (isLoading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp))
+        if (isLoading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = ShiftActiveBackground)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
 
+        // Miktar
         Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(10.dp)) {
-            if (query.isEmpty()) Text("Type amount (e.g. 100)...", color = KeyTextDim, fontSize = 14.sp)
+            if (query.isEmpty()) Text("Miktar yazın (örn. 100)...", color = KeyTextDim, fontSize = 14.sp)
             else Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(query, color = KeyText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Box(modifier = Modifier.padding(start = 2.dp).width(2.dp).height(18.dp).background(ShiftActiveBackground))
             }
         }
 
+        // FROM ⇄ TO
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             CurrencyChipRow(selected = from, items = currencies, onSelect = { from = it; scope.launch { repo.loadRates(it) } }, modifier = Modifier.weight(1f))
-            Box(modifier = Modifier.padding(horizontal=4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { val tmp = from; from = to; to = tmp; scope.launch { repo.loadRates(from) } }.padding(8.dp)) { Text("⇄", color=KeyText) }
+            Box(modifier = Modifier.padding(horizontal=4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { val tmp = from; from = to; to = tmp; scope.launch { repo.loadRates(from) } }.padding(8.dp)) {
+                SwapHorizIcon(tint = KeyText, size = 16.dp)
+            }
             CurrencyChipRow(selected = to, items = currencies, onSelect = { to = it }, modifier = Modifier.weight(1f))
         }
 
+        // Sonuç
         result?.let { resText ->
             val toSym = currencies.find { it.code == to }?.symbol ?: ""
+            val fromSym = currencies.find { it.code == from }?.symbol ?: ""
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
+                    Text("$amount $fromSym", fontSize = 12.sp, color = KeyTextDim)
                     Text("$resText $toSym", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = KeyText)
                 }
                 Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(ShiftActiveBackground).clickable { onResultCommit("$resText $toSym"); onQueryChange("") }.padding(horizontal=12.dp, vertical=8.dp)) {
-                    Text("Paste", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ContentCopyIcon(tint = KeyText, size = 14.dp)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Yapıştır", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

@@ -68,9 +68,12 @@ fun KeyboardView(
     var currentPanel by remember { mutableStateOf(KeyboardPanel.KEYBOARD) }
     val scope = rememberCoroutineScope()
     
+    // Panel Input States
     var searchQuery by remember { mutableStateOf("") }
     val searchEngine = remember(clipboardHistory) { SearchEngine(clipboardHistory) }
     val searchResults = remember { mutableStateListOf<SearchResult>() }
+    
+    var translateQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(searchQuery) {
         searchResults.clear()
@@ -101,7 +104,7 @@ fun KeyboardView(
                     currentPanel = KeyboardPanel.KEYBOARD
                     scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
                 },
-                onSwitchPanel = { currentPanel = it; searchQuery = "" }
+                onSwitchPanel = { currentPanel = it; searchQuery = ""; translateQuery = "" }
             )
         } else if (currentPanel == KeyboardPanel.SEARCH) {
             SearchPanel(
@@ -111,13 +114,15 @@ fun KeyboardView(
             )
         } else if (currentPanel == KeyboardPanel.TRANSLATE) {
             TranslatePanel(
-                onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD },
-                onClose = { currentPanel = KeyboardPanel.KEYBOARD }
+                query = translateQuery,
+                onQueryChange = { translateQuery = it },
+                onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; translateQuery = "" },
+                onClose = { currentPanel = KeyboardPanel.KEYBOARD; translateQuery = "" }
             )
         }
 
-        // Render KEYS if we are in KEYBOARD or SEARCH mode
-        if (currentPanel == KeyboardPanel.KEYBOARD || currentPanel == KeyboardPanel.SEARCH) {
+        // Keys render for KEYBOARD, SEARCH, TRANSLATE
+        if (currentPanel == KeyboardPanel.KEYBOARD || currentPanel == KeyboardPanel.SEARCH || currentPanel == KeyboardPanel.TRANSLATE) {
             key(layoutSwitcher.currentLayoutName, state.currentLayer) {
                 Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 4.dp).padding(bottom = 6.dp)) {
                     if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {
@@ -125,7 +130,9 @@ fun KeyboardView(
                             numberRow.forEach { kd ->
                                 KeyView(modifier = Modifier.weight(1f), keyData = kd, isShifted = false, isCapsLock = false, currentLayer = state.currentLayer, heightScale = heightScale * 0.8f, hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
                                     onClick = { 
-                                        if (currentPanel == KeyboardPanel.SEARCH) searchQuery += kd.label else onTextInput(kd.label)
+                                        if (currentPanel == KeyboardPanel.SEARCH) searchQuery += kd.label 
+                                        else if (currentPanel == KeyboardPanel.TRANSLATE) translateQuery += kd.label
+                                        else onTextInput(kd.label)
                                     }
                                 )
                             }
@@ -137,14 +144,24 @@ fun KeyboardView(
                             row.forEach { kd ->
                                 KeyView(
                                     modifier = Modifier.weight(kd.widthWeight), keyData = kd, isShifted = state.shouldUpperCase, isCapsLock = state.isCapsLock, currentLayer = state.currentLayer, heightScale = heightScale, hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
-                                    onCursorMove = if (spacebarCursor && kd.action is KeyAction.Space) { { dir -> onCursorMove(dir) } } else null,
-                                    onAltChar = { if (currentPanel == KeyboardPanel.SEARCH) searchQuery += it else onTextInput(it) },
+                                    onCursorMove = if (spacebarCursor && kd.action is KeyAction.Space && currentPanel == KeyboardPanel.KEYBOARD) { { dir -> onCursorMove(dir) } } else null,
+                                    onAltChar = { 
+                                        if (currentPanel == KeyboardPanel.SEARCH) searchQuery += it 
+                                        else if (currentPanel == KeyboardPanel.TRANSLATE) translateQuery += it
+                                        else onTextInput(it) 
+                                    },
                                     onClick = {
-                                        if (currentPanel == KeyboardPanel.SEARCH) {
+                                        if (currentPanel == KeyboardPanel.SEARCH || currentPanel == KeyboardPanel.TRANSLATE) {
                                             when (val act = kd.action) {
-                                                is KeyAction.Text -> searchQuery += if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) act.char.uppercase() else act.char
-                                                is KeyAction.Space -> searchQuery += " "
-                                                is KeyAction.Backspace -> if (searchQuery.isNotEmpty()) searchQuery = searchQuery.dropLast(1)
+                                                is KeyAction.Text -> {
+                                                    val chr = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) act.char.uppercase() else act.char
+                                                    if (currentPanel == KeyboardPanel.SEARCH) searchQuery += chr else translateQuery += chr
+                                                }
+                                                is KeyAction.Space -> if (currentPanel == KeyboardPanel.SEARCH) searchQuery += " " else translateQuery += " "
+                                                is KeyAction.Backspace -> {
+                                                    if (currentPanel == KeyboardPanel.SEARCH && searchQuery.isNotEmpty()) searchQuery = searchQuery.dropLast(1)
+                                                    else if (currentPanel == KeyboardPanel.TRANSLATE && translateQuery.isNotEmpty()) translateQuery = translateQuery.dropLast(1)
+                                                }
                                                 is KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
                                                 is KeyAction.SwitchToSymbols -> state.switchToSymbols()
                                                 is KeyAction.SwitchToLetters -> state.switchToLetters()

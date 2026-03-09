@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import handboard.app.core.theme.ActionKeyBackground
@@ -44,82 +46,108 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun TranslatePanel(
+    query: String,
+    onQueryChange: (String) -> Unit,
     onInsertText: (String) -> Unit,
     onClose: () -> Unit
 ) {
-    var sourceText by remember { mutableStateOf("") }
-    var translatedText by remember { mutableStateOf("") }
     var sourceLang by remember { mutableStateOf("auto") }
-    var targetLang by remember { mutableStateOf("tr") }
+    var targetLang by remember { mutableStateOf("en") }
+    var translatedText by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-
     var showSrcMenu by remember { mutableStateOf(false) }
     var showTrgMenu by remember { mutableStateOf(false) }
 
-    LaunchedEffect(sourceText, sourceLang, targetLang) {
-        if (sourceText.isBlank()) {
+    LaunchedEffect(query, sourceLang, targetLang) {
+        if (query.isBlank()) {
             translatedText = ""
-            error = null
             return@LaunchedEffect
         }
         isLoading = true
-        error = null
-        delay(600)
-
+        delay(500)
         if (sourceLang == targetLang && sourceLang != "auto") {
-            translatedText = sourceText
+            translatedText = query
             isLoading = false
             return@LaunchedEffect
         }
-
-        TranslationEngine.translate(sourceLang, targetLang, sourceText).fold(
+        TranslationEngine.translate(sourceLang, targetLang, query).fold(
             onSuccess = { translatedText = it; isLoading = false },
-            onFailure = { error = it.message; isLoading = false }
+            onFailure = { translatedText = "Error"; isLoading = false }
         )
     }
 
-    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().background(KeyboardBackground).padding(8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            LangSelector(label = TranslationLanguages.items[sourceLang] ?: sourceLang, onClick = { showSrcMenu = !showSrcMenu }, modifier = Modifier.weight(1f))
-            Text(" ➔ ", color = KeyTextDim, modifier = Modifier.padding(horizontal = 8.dp).align(Alignment.CenterVertically))
-            LangSelector(label = TranslationLanguages.items[targetLang] ?: targetLang, onClick = { showTrgMenu = !showTrgMenu }, modifier = Modifier.weight(1f))
-            Spacer(Modifier.width(8.dp))
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(10.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().background(KeyboardBackground)) {
+        
+        // Top Bar: Lang Selection & Swap
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            LangBtn(label = TranslationLanguages.items[sourceLang] ?: sourceLang, onClick = { showSrcMenu = true }, modifier = Modifier.weight(1f))
+            
+            Box(modifier = Modifier.padding(horizontal = 4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable {
+                if (sourceLang != "auto") { val tmp = sourceLang; sourceLang = targetLang; targetLang = tmp }
+            }.padding(8.dp)) {
+                Text("⇄", color = KeyText)
+            }
+            
+            LangBtn(label = TranslationLanguages.items[targetLang] ?: targetLang, onClick = { showTrgMenu = true }, modifier = Modifier.weight(1f))
+            
+            Spacer(Modifier.width(4.dp))
+            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(8.dp)) {
                 Text("✕", color = KeyText)
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        if (showSrcMenu) {
-            LangList(isSource = true, onSelect = { sourceLang = it; showSrcMenu = false })
-        } else if (showTrgMenu) {
-            LangList(isSource = false, onSelect = { targetLang = it; showTrgMenu = false })
-        } else {
-            Box(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(8.dp)) {
-                if (sourceText.isEmpty()) Text("Type to translate...", color = KeyTextDim, fontSize = 14.sp)
-                BasicTextField(
-                    value = sourceText, onValueChange = { sourceText = it },
-                    textStyle = TextStyle(color = KeyText, fontSize = 14.sp),
-                    cursorBrush = SolidColor(ShiftActiveBackground), modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Box(modifier = Modifier.fillMaxWidth().height(60.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).padding(8.dp)) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = ShiftActiveBackground, modifier = Modifier.align(Alignment.Center).padding(4.dp))
-                } else if (error != null) {
-                    Text("Error: $error", color = handboard.app.core.theme.Error80, fontSize = 12.sp)
-                } else {
-                    Text(translatedText.ifEmpty { "Translation will appear here" }, color = if (translatedText.isEmpty()) KeyTextDim else KeyText, fontSize = 14.sp)
+        // Language List Overlay
+        if (showSrcMenu || showTrgMenu) {
+            val isSource = showSrcMenu
+            val mapItems = if (isSource) TranslationLanguages.items else TranslationLanguages.items.filterKeys { it != "auto" }
+            val listItems = mapItems.entries.map { Pair(it.key, it.value) }
+            
+            LazyColumn(modifier = Modifier.fillMaxWidth().height(140.dp).background(KeyBackground)) {
+                items(listItems) { pair ->
+                    Text(
+                        text = pair.second, color = KeyText, fontSize = 14.sp,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (isSource) sourceLang = pair.first else targetLang = pair.first
+                            showSrcMenu = false; showTrgMenu = false
+                        }.padding(12.dp)
+                    )
                 }
-
-                if (translatedText.isNotEmpty() && !isLoading) {
-                    Box(modifier = Modifier.align(Alignment.BottomEnd).clip(RoundedCornerShape(6.dp)).background(ShiftActiveBackground).clickable { onInsertText(translatedText); sourceText="" }.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                        Text("Insert", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            // Input & Output Area
+            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
+                // Input
+                Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(10.dp)) {
+                    if (query.isEmpty()) Text("Type to translate...", color = KeyTextDim, fontSize = 14.sp)
+                    else {
+                        Row {
+                            Text(query, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Box(modifier = Modifier.padding(start = 2.dp).width(2.dp).height(16.dp).background(ShiftActiveBackground))
+                        }
+                    }
+                }
+                
+                Spacer(Modifier.height(4.dp))
+                
+                // Output
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(color = ShiftActiveBackground, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(translatedText.ifEmpty { "Translation..." }, color = if (translatedText.isEmpty()) KeyTextDim else KeyText, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    
+                    if (translatedText.isNotEmpty() && !isLoading) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(ShiftActiveBackground).clickable { onInsertText(translatedText); onQueryChange("") }.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                            Text("Insert", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -128,23 +156,8 @@ fun TranslatePanel(
 }
 
 @Composable
-private fun LangSelector(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable(onClick = onClick).padding(10.dp), contentAlignment = Alignment.Center) {
-        Text(label, color = KeyText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-private fun LangList(isSource: Boolean, onSelect: (String) -> Unit) {
-    // Convert Map.Entry to a Pair explicitly to avoid component() ambiguous errors
-    val mapItems = if (isSource) TranslationLanguages.items else TranslationLanguages.items.filterKeys { it != "auto" }
-    val listItems = mapItems.entries.map { Pair(it.key, it.value) }
-    
-    LazyColumn(modifier = Modifier.fillMaxWidth().height(128.dp)) {
-        items(listItems) { pair ->
-            Box(modifier = Modifier.fillMaxWidth().clickable { onSelect(pair.first) }.padding(12.dp)) {
-                Text(pair.second, color = KeyText, fontSize = 14.sp)
-            }
-        }
+private fun LangBtn(label: String, onClick: () -> Unit, modifier: Modifier) {
+    Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable(onClick = onClick).padding(8.dp), contentAlignment = Alignment.Center) {
+        Text(label, color = KeyTextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

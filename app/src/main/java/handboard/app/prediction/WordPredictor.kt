@@ -38,12 +38,14 @@ class WordPredictor {
         if (prefix.isEmpty()) return emptyList()
 
         val results = mutableListOf<String>()
-        val prefixResults = trie.wordsWithPrefix(prefix, maxSuggestions + 3).filter { it.first != prefix }.map { it.first }
-        results.addAll(prefixResults)
+        val prefixPairs: List<Pair<String, Int>> = trie.wordsWithPrefix(prefix, maxSuggestions + 3)
+        val prefixStrings: List<String> = prefixPairs.filter { pair -> pair.first != prefix }.map { pair -> pair.first }
+        results.addAll(prefixStrings)
 
         if (autocorrect && results.size < maxSuggestions && prefix.length >= 3) {
-            val fuzzyResults = trie.fuzzySearch(prefix, maxSuggestions - results.size).map { it.first }.filter { it !in results }
-            results.addAll(fuzzyResults)
+            val fuzzyPairs: List<Pair<String, Int>> = trie.fuzzySearch(prefix, maxSuggestions - results.size)
+            val fuzzyStrings: List<String> = fuzzyPairs.map { pair -> pair.first }.filter { word -> word !in results }
+            results.addAll(fuzzyStrings)
         }
 
         if (trie.search(prefix) && results.isEmpty()) return predictNextWord(maxSuggestions, prefix)

@@ -69,20 +69,15 @@ class Trie {
         node.frequency += addFreq
     }
 
-    /** Find words within edit distance 1 (auto-correct) */
     fun fuzzySearch(word: String, maxResults: Int = 5): List<Pair<String, Int>> {
         if (word.length < 2) return emptyList()
         val target = word.lowercase()
         val results = mutableListOf<Pair<String, Int>>()
-
-        // Generate candidates with edit distance 1
         val candidates = mutableSetOf<String>()
 
-        // Deletions
         for (i in target.indices) {
             candidates.add(target.removeRange(i, i + 1))
         }
-        // Substitutions
         for (i in target.indices) {
             for (c in 'a'..'z') {
                 if (c != target[i]) {
@@ -90,20 +85,17 @@ class Trie {
                 }
             }
         }
-        // Insertions
         for (i in 0..target.length) {
             for (c in 'a'..'z') {
                 candidates.add(target.substring(0, i) + c + target.substring(i))
             }
         }
-        // Transpositions
         for (i in 0 until target.length - 1) {
             val arr = target.toCharArray()
             val tmp = arr[i]; arr[i] = arr[i + 1]; arr[i + 1] = tmp
             candidates.add(String(arr))
         }
 
-        // Check which candidates exist in trie
         for (candidate in candidates) {
             if (candidate != target && search(candidate)) {
                 results.add(candidate to getFrequency(candidate))

@@ -72,6 +72,8 @@ fun SettingsScreen(
     val autocorrectEnabled by preferencesManager.autocorrectEnabled.collectAsState(initial = true)
     val bottomPadding by preferencesManager.bottomPadding.collectAsState(initial = 0)
     val clipboardEnabled by preferencesManager.clipboardEnabled.collectAsState(initial = false)
+    
+    // Explicit calls to theme and high contrast settings
     val followSystemTheme by preferencesManager.followSystemTheme.collectAsState(initial = false)
     val numberRow by preferencesManager.numberRowEnabled.collectAsState(initial = false)
     val autoCap by preferencesManager.autoCapitalize.collectAsState(initial = true)
@@ -83,7 +85,6 @@ fun SettingsScreen(
     var dictManager by remember { mutableStateOf(DictionaryManager(context)) }
     val predictor = remember { WordPredictor().apply { loadDictionary(context, dictId) } }
     
-    // File Picker for Dictionary
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             scope.launch(Dispatchers.IO) {
@@ -102,7 +103,7 @@ fun SettingsScreen(
                     
                     withContext(Dispatchers.Main) {
                         Toast.makeText(context, "Dictionary imported!", Toast.LENGTH_SHORT).show()
-                        dictManager = DictionaryManager(context) // Refresh lists
+                        dictManager = DictionaryManager(context) 
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
@@ -120,7 +121,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Dictionary
+            
             Sec("Dictionary") {
                 dictManager.getAvailable().forEach { dict ->
                     Row(
@@ -142,7 +143,6 @@ fun SettingsScreen(
                 Sub("Import text-based word lists (word \\t frequency)")
             }
 
-            // Predictions
             Sec(stringResource(R.string.section_predictions)) {
                 Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
                 if (predictionsEnabled) {
@@ -154,14 +154,12 @@ fun SettingsScreen(
                 }
             }
 
-            // Personal Dictionary
             Sec("Personal Dictionary") {
                 Text("${predictor.getPersonalWords().size} learned words", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { predictor.clearPersonalDictionary() }) { Text("Clear Personal Dictionary") }
             }
 
-            // Layout
             Sec(stringResource(R.string.section_layout)) {
                 LayoutRegistry.getAllNames().forEach { name ->
                     Row(Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -171,14 +169,12 @@ fun SettingsScreen(
                 }
             }
 
-            // Size
             Sec(stringResource(R.string.section_size)) {
                 Text(stringResource(R.string.height_label, heightScale)); Slider(value = heightScale, onValueChange = { scope.launch { preferencesManager.setKeyboardHeight(it) } }, valueRange = 0.7f..1.5f, steps = 7)
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.width_label, widthPercent)); Slider(value = widthPercent.toFloat(), onValueChange = { scope.launch { preferencesManager.setKeyboardWidth(it.toInt()) } }, valueRange = 50f..100f, steps = 9)
             }
 
-            // Position
             Sec(stringResource(R.string.section_position)) {
                 val opts = listOf(stringResource(R.string.position_left), stringResource(R.string.position_center), stringResource(R.string.position_right))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -186,13 +182,11 @@ fun SettingsScreen(
                 }
             }
 
-            // Bottom Padding
             Sec(stringResource(R.string.section_padding)) {
                 Text(stringResource(R.string.padding_label, bottomPadding)); Sub(stringResource(R.string.padding_desc))
                 Slider(value = bottomPadding.toFloat(), onValueChange = { scope.launch { preferencesManager.setBottomPadding(it.roundToInt()) } }, valueRange = 0f..60f, steps = 11)
             }
 
-            // Typing
             Sec(stringResource(R.string.section_typing)) {
                 Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }
                 Sub(stringResource(R.string.number_row_desc)); Spacer(Modifier.height(8.dp))
@@ -202,11 +196,30 @@ fun SettingsScreen(
                 Sub(stringResource(R.string.spacebar_cursor_desc))
             }
 
-            // Theme, Clipboard, Feedback, Accessibility...
-            Sec(stringResource(R.string.section_theme)) { Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }; Sub(stringResource(R.string.theme_desc)) }
-            Sec(stringResource(R.string.section_clipboard)) { Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }; Sub(stringResource(R.string.clipboard_desc)) }
-            Sec(stringResource(R.string.section_feedback)) { Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }; Sub(stringResource(R.string.sound_desc)) }
-            Sec(stringResource(R.string.section_accessibility)) { Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }; Sub(stringResource(R.string.high_contrast_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }; Sub(stringResource(R.string.large_keys_desc)) }
+            Sec(stringResource(R.string.section_theme)) { 
+                Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }
+                Sub(stringResource(R.string.theme_desc)) 
+            }
+
+            Sec(stringResource(R.string.section_clipboard)) { 
+                Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }
+                Sub(stringResource(R.string.clipboard_desc)) 
+            }
+
+            Sec(stringResource(R.string.section_feedback)) { 
+                Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }
+                Spacer(Modifier.height(8.dp))
+                Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }
+                Sub(stringResource(R.string.sound_desc)) 
+            }
+
+            Sec(stringResource(R.string.section_accessibility)) { 
+                Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }
+                Sub(stringResource(R.string.high_contrast_desc))
+                Spacer(Modifier.height(8.dp))
+                Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }
+                Sub(stringResource(R.string.large_keys_desc)) 
+            }
             Spacer(Modifier.height(32.dp))
         }
     }

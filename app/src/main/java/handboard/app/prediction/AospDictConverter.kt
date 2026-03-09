@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.coroutineContext
 
 class AospDictConverter(private val context: Context) {
 
@@ -22,14 +23,19 @@ class AospDictConverter(private val context: Context) {
     suspend fun convertAndSave(uri: Uri): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             val rawBytes = readBytes(uri)
+            Log.i(TAG, "Dosya okundu: ${rawBytes.size} byte")
+
             val outputFile = prepareOutputFile()
 
             if (isPlainText(rawBytes)) {
+                Log.i(TAG, "Düz metin algılandı -> doğrudan kopyalanıyor")
                 outputFile.writeBytes(rawBytes)
             } else {
+                Log.i(TAG, "Binary algılandı -> Scavenger taraması başlıyor")
                 val words = scavengeWords(rawBytes)
+
                 if (words.isEmpty()) {
-                    throw IllegalStateException("No valid words found. May not be a valid dictionary.")
+                    throw IllegalStateException("Geçerli kelime bulunamadı. Bozuk dosya olabilir.")
                 }
                 writeOutput(words, outputFile)
             }
@@ -61,9 +67,11 @@ class AospDictConverter(private val context: Context) {
         var pos = 0
 
         while (pos < bytes.size) {
-            kotlinx.coroutines.coroutineContext.ensureActive()
-            val decoded = decodeUtf8Char(bytes, pos)
+            if (pos % 10_000 == 0) {
+                coroutineContext.ensureActive()
+            }
 
+            val decoded = decodeUtf8Char(bytes, pos)
             if (decoded != null) {
                 val (codePoint, byteLen) = decoded
                 if (Character.isLetter(codePoint)) {
@@ -116,7 +124,7 @@ class AospDictConverter(private val context: Context) {
 
     private fun readBytes(uri: Uri): ByteArray {
         return context.contentResolver.openInputStream(uri)?.use { stream -> stream.readBytes() }
-            ?: throw IllegalStateException("Cannot open file: $uri")
+            ?: throw IllegalStateException("Dosya açılamadı: $uri")
     }
 
     private fun prepareOutputFile(): File {

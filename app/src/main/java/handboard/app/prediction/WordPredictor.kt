@@ -1,80 +1,74 @@
 package handboard.app.prediction
 
 import android.content.Context
-import java.util.LinkedHashSet
+import android.util.Log
 
 class WordPredictor {
-    var trie = Trie()
-        private set
+    private val trie = Trie()
     private val bigramMap = HashMap<String, HashMap<String, Int>>()
     private var lastWord = ""
+    private var isLoaded = false
     private var personalDict: PersonalDictionary? = null
     private var dictManager: DictionaryManager? = null
 
-    companion object {
-        private const val MAX_RESULTS = 10
-        private const val MAX_WORD_LENGTH = 30
-        private const val ALPHABET = "abcçdefgğhıijklmnoöpqrsştuüvwxyz"
-    }
+    // Cache to prevent recalculating the same prefix
+    private var lastPrefix = ""
+    private var lastResults = emptyList<String>()
 
     fun loadDictionaries(context: Context, dictIds: Set<String>) {
         val newTrie = Trie()
         bigramMap.clear()
+        
         dictManager = DictionaryManager(context)
+        
         dictIds.forEach { dictId ->
             val dict = dictManager?.getAvailable()?.find { it.id == dictId }
             if (dict != null) dictManager?.loadIntoTrie(dict, newTrie)
             dictManager?.loadBigrams(dictId, bigramMap)
         }
+
         personalDict = PersonalDictionary(context)
         personalDict?.applyToTrie(newTrie)
         personalDict?.applyBigrams(bigramMap)
-        if (newTrie.size() == 0) {
-            val words = listOf("the" to 999,"be" to 998,"to" to 997,"and" to 995, "you" to 982,"hello" to 899,"thanks" to 898,"yes" to 894)
-            words.forEach { (w, f) -> newTrie.insert(w, f) }
-        }
-        trie = newTrie
+
+        if (newTrie.size() == 0) loadFallback(newTrie)
+
+        // Swap the internal trie references safely
+        trie.root.children.clear()
+        trie.root.children.putAll(newTrie.root.children)
+        
+        isLoaded = true
+        lastPrefix = ""
+        lastResults = emptyList()
     }
 
-    // Prefix First, Fast Fuzzy Second
-    fun predict(input: String, maxSuggestions: Int = 3, autocorrect: Boolean = true): List<String> {
-        if (input.isBlank()) return predictNextWord(maxSuggestions)
-        val prefix = input.lowercase().trim()
-        if (prefix.isEmpty() || prefix.length > MAX_WORD_LENGTH) return emptyList()
+    private fun loadFallback(targetTrie: Trie) {
+        val words = listOf("the" to 999,"be" to 998,"to" to 997,"and" to 995, "you" to 982,"hello" to 899,"thanks" to 898,"yes" to 894)
+        words.forEach { (w, f) -> targetTrie.insert(w, f) }
+    }
 
-        val results = mutableListOf<String>()
-        val prefixResults = trie.wordsWithPrefix(prefix, maxSuggestions + 5).map { it.first }.filter { it != prefix }
-        results.addAll(prefixResults)
+    // Synchronous, fast prediction (<5ms). No coroutines needed here.
+    fun predict(textBeforeCursor: String, maxSuggestions: Int = 3): List<String> {
+        if (!isLoaded || trie.size() == 0) return emptyList()
 
-        if (results.size >= maxSuggestions) return results.take(maxSuggestions)
+        val prefix = extractCurrentWord(textBeforeCursor)
 
-        if (autocorrect && prefix.length >= 3 && results.size < 5) {
-            val candidates = generateVariants(prefix)
-            for (variant in candidates) {
-                if (trie.search(variant) && variant !in results) {
-                    results.add(variant)
-                }
-                if (results.size >= maxSuggestions) break
-            }
+        if (prefix.isEmpty() || prefix.length > 30) {
+            return predictNextWord(maxSuggestions)
         }
+
+        if (prefix == lastPrefix && lastResults.isNotEmpty()) {
+            return lastResults.take(maxSuggestions)
+        }
+
+        val results = trie.wordsWithPrefix(prefix, maxSuggestions + 3).map { it.first }.filter { it != prefix }
+        
+        lastPrefix = prefix
+        lastResults = results
+
         if (trie.search(prefix) && results.isEmpty()) return predictNextWord(maxSuggestions, prefix)
+        
         return results.take(maxSuggestions)
-    }
-
-    private fun generateVariants(word: String): Set<String> {
-        val variants = LinkedHashSet<String>()
-        for (i in word.indices) variants.add(word.removeRange(i, i + 1))
-        for (i in word.indices) {
-            for (c in ALPHABET) if (c != word[i]) variants.add(word.substring(0, i) + c + word.substring(i + 1))
-        }
-        for (c in ALPHABET) variants.add(word + c)
-        for (i in 0 until word.length - 1) {
-            val chars = word.toCharArray()
-            val temp = chars[i]; chars[i] = chars[i + 1]; chars[i + 1] = temp
-            variants.add(String(chars))
-        }
-        variants.remove(word)
-        return variants
     }
 
     private fun predictNextWord(limit: Int, overrideLastWord: String? = null): List<String> {
@@ -88,22 +82,39 @@ class WordPredictor {
         if (lower.length < 2) return
         personalDict?.learnWord(lower)
         trie.updateFrequency(lower, 5)
+        
         if (lastWord.isNotEmpty()) {
             val count = bigramMap.getOrPut(lastWord) { HashMap() }[lower] ?: 0
             bigramMap[lastWord]!![lower] = count + 1
             personalDict?.learnBigram(lastWord, lower)
         }
         lastWord = lower
+        lastPrefix = "" // invalidate cache
+    }
+
+    private fun extractCurrentWord(text: String?): String {
+        if (text.isNullOrEmpty()) return ""
+        var endIndex = text.length
+        if (!text[endIndex - 1].isLetter() && text[endIndex - 1] != '\'' && text[endIndex - 1] != '-') return ""
+
+        var startIndex = endIndex - 1
+        while (startIndex > 0) {
+            val ch = text[startIndex - 1]
+            if (ch.isLetter() || ch == '\'' || ch == '-') startIndex--
+            else break
+        }
+        val word = text.substring(startIndex, endIndex)
+        return if (word.length > 30) "" else word.lowercase()
     }
 
     fun getCurrentWord(textBeforeCursor: String): String {
-        if (textBeforeCursor.isBlank() || textBeforeCursor.endsWith(" ")) return ""
-        val trimmed = textBeforeCursor.trimEnd()
-        val lastSpace = trimmed.lastIndexOf(' ')
-        return if (lastSpace >= 0) trimmed.substring(lastSpace + 1) else trimmed
+        return extractCurrentWord(textBeforeCursor)
     }
 
     fun getDictionarySize(): Int = trie.size()
     fun getPersonalWords(): Map<String, Int> = personalDict?.getWords() ?: emptyMap()
-    fun clearPersonalDictionary() = personalDict?.clear()
+    fun clearPersonalDictionary() {
+        personalDict?.clear()
+        lastPrefix = ""
+    }
 }

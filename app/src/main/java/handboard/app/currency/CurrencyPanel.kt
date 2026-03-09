@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import handboard.app.core.theme.ActionKeyBackground
@@ -22,10 +21,6 @@ import handboard.app.core.theme.KeyText
 import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
-import handboard.app.layout.ui.ContentCopyIcon
-import handboard.app.layout.ui.RefreshIcon
-import handboard.app.layout.ui.SwapHorizIcon
-import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
@@ -40,7 +35,6 @@ fun CurrencyPanel(
     val rates by repo.rates.collectAsState()
     val isLoading by repo.isLoading.collectAsState()
     val error by repo.error.collectAsState()
-    val scope = rememberCoroutineScope()
     val currencies = repo.currencies
 
     var from by remember { mutableStateOf("USD") }
@@ -52,7 +46,10 @@ fun CurrencyPanel(
 
     LaunchedEffect(Unit) { repo.loadRates("USD") }
     
-    // Crash Proof Result Calculation
+    DisposableEffect(Unit) {
+        onDispose { repo.destroy() }
+    }
+
     LaunchedEffect(amount, from, to, rates) {
         try {
             if (rates.isNotEmpty()) {
@@ -66,8 +63,8 @@ fun CurrencyPanel(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("💱 Currency Converter", color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Row {
-                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { scope.launch { repo.loadRates(from) } }.padding(8.dp)) {
-                    RefreshIcon(tint = KeyText, size = 14.dp)
+                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { repo.loadRates(from) }.padding(8.dp)) {
+                    Text("🔄", color = KeyText, fontSize = 14.sp)
                 }
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(8.dp)) {
@@ -77,7 +74,7 @@ fun CurrencyPanel(
         }
 
         if (isLoading) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp), color = ShiftActiveBackground)
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+        error?.let { Text("⚠️ $it", color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
 
         Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(10.dp)) {
             if (query.isEmpty()) Text("Type amount (e.g. 100)...", color = KeyTextDim, fontSize = 14.sp)
@@ -88,9 +85,9 @@ fun CurrencyPanel(
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            CurrencyChipRow(selected = from, items = currencies, onSelect = { from = it; scope.launch { repo.loadRates(it) } }, modifier = Modifier.weight(1f))
-            Box(modifier = Modifier.padding(horizontal=4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { val tmp = from; from = to; to = tmp; scope.launch { repo.loadRates(from) } }.padding(8.dp)) { 
-                SwapHorizIcon(tint = KeyText, size = 16.dp) 
+            CurrencyChipRow(selected = from, items = currencies, onSelect = { from = it; repo.loadRates(it) }, modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.padding(horizontal=4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { val tmp = from; from = to; to = tmp; repo.loadRates(from) }.padding(8.dp)) { 
+                Text("⇄", color = KeyText, fontSize = 16.sp) 
             }
             CurrencyChipRow(selected = to, items = currencies, onSelect = { to = it }, modifier = Modifier.weight(1f))
         }
@@ -104,11 +101,7 @@ fun CurrencyPanel(
                     Text("$resText $toSym", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = KeyText)
                 }
                 Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(ShiftActiveBackground).clickable { onResultCommit("$resText $toSym"); onQueryChange("") }.padding(horizontal=12.dp, vertical=8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        ContentCopyIcon(tint = KeyText, size = 14.dp)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Paste", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Text("📋 Paste", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

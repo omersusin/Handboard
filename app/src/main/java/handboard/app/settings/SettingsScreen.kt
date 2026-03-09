@@ -1,5 +1,9 @@
 package handboard.app.settings
 
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,8 +32,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,7 +46,10 @@ import handboard.app.layout.LayoutRegistry
 import handboard.app.layout.ui.BackArrowIcon
 import handboard.app.prediction.DictionaryManager
 import handboard.app.prediction.WordPredictor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,29 +80,49 @@ fun SettingsScreen(
     val largeKeys by preferencesManager.largeKeys.collectAsState(initial = false)
     val dictId by preferencesManager.dictionaryId.collectAsState(initial = "en_us")
 
-    val dictManager = remember { DictionaryManager(context) }
-    val availableDicts = remember { dictManager.getAvailable() }
+    var dictManager by remember { mutableStateOf(DictionaryManager(context)) }
     val predictor = remember { WordPredictor().apply { loadDictionary(context, dictId) } }
-    val personalWordsCount = remember(dictId) { predictor.getPersonalWords().size }
+    
+    // File Picker for Dictionary
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val dictDir = File(context.filesDir, "dictionaries")
+                    if (!dictDir.exists()) dictDir.mkdirs()
+                    
+                    val filename = "custom_${System.currentTimeMillis()}.txt"
+                    val destFile = File(dictDir, filename)
+                    
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Dictionary imported!", Toast.LENGTH_SHORT).show()
+                        dictManager = DictionaryManager(context) // Refresh lists
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Import failed.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { BackArrowIcon(tint = MaterialTheme.colorScheme.onSurface) }
-                }
-            )
-        }
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.settings_title)) }, navigationIcon = { IconButton(onClick = onBack) { BackArrowIcon(tint = MaterialTheme.colorScheme.onSurface) } }) }
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            
             // Dictionary
             Sec("Dictionary") {
-                for (dict in availableDicts) {
+                dictManager.getAvailable().forEach { dict ->
                     Row(
                         Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setDictionaryId(dict.id) } }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -104,8 +133,13 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                val activeDict = availableDicts.find { it.id == dictId }
-                Sub("Active: ${(activeDict?.name ?: "Built-in")} (${predictor.getDictionarySize()} words)")
+                val activeDict = dictManager.getAvailable().find { it.id == dictId }
+                Sub("Active: ${activeDict?.name ?: "Built-in"} (${predictor.getDictionarySize()} words)")
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = { filePicker.launch("*/*") }) {
+                    Text("Import .txt / .dict file")
+                }
+                Sub("Import text-based word lists (word \\t frequency)")
             }
 
             // Predictions
@@ -114,7 +148,6 @@ fun SettingsScreen(
                 if (predictionsEnabled) {
                     Spacer(Modifier.height(8.dp))
                     Toggle("Auto-Correct", autocorrectEnabled) { scope.launch { preferencesManager.setAutocorrectEnabled(it) } }
-                    Sub("Suggest corrections for misspelled words")
                     Spacer(Modifier.height(16.dp))
                     Text(stringResource(R.string.suggestions_label, suggestionCount))
                     Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3)
@@ -123,23 +156,17 @@ fun SettingsScreen(
 
             // Personal Dictionary
             Sec("Personal Dictionary") {
-                Text("$personalWordsCount learned words", style = MaterialTheme.typography.bodyLarge)
+                Text("${predictor.getPersonalWords().size} learned words", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { predictor.clearPersonalDictionary() }) {
-                    Text("Clear Personal Dictionary")
-                }
+                Button(onClick = { predictor.clearPersonalDictionary() }) { Text("Clear Personal Dictionary") }
             }
 
             // Layout
             Sec(stringResource(R.string.section_layout)) {
-                for (name in LayoutRegistry.getAllNames()) {
-                    Row(
-                        Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }.padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                LayoutRegistry.getAllNames().forEach { name ->
+                    Row(Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = name == layoutName, onClick = { scope.launch { preferencesManager.setSelectedLayout(name) } })
-                        Spacer(Modifier.width(8.dp))
-                        Text(name, style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.width(8.dp)); Text(name, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
@@ -168,63 +195,23 @@ fun SettingsScreen(
             // Typing
             Sec(stringResource(R.string.section_typing)) {
                 Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }
-                Sub(stringResource(R.string.number_row_desc))
-                Spacer(Modifier.height(8.dp))
+                Sub(stringResource(R.string.number_row_desc)); Spacer(Modifier.height(8.dp))
                 Toggle(stringResource(R.string.auto_capitalize_toggle), autoCap) { scope.launch { preferencesManager.setAutoCapitalize(it) } }
-                Sub(stringResource(R.string.auto_capitalize_desc))
-                Spacer(Modifier.height(8.dp))
+                Sub(stringResource(R.string.auto_capitalize_desc)); Spacer(Modifier.height(8.dp))
                 Toggle(stringResource(R.string.spacebar_cursor_toggle), spacebarCursor) { scope.launch { preferencesManager.setSpacebarCursor(it) } }
                 Sub(stringResource(R.string.spacebar_cursor_desc))
             }
 
-            // Theme
-            Sec(stringResource(R.string.section_theme)) {
-                Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }
-                Sub(stringResource(R.string.theme_desc))
-            }
-
-            // Clipboard
-            Sec(stringResource(R.string.section_clipboard)) {
-                Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }
-                Sub(stringResource(R.string.clipboard_desc))
-            }
-
-            // Feedback
-            Sec(stringResource(R.string.section_feedback)) {
-                Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }
-                Spacer(Modifier.height(8.dp))
-                Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }
-                Sub(stringResource(R.string.sound_desc))
-            }
-
-            // Accessibility
-            Sec(stringResource(R.string.section_accessibility)) {
-                Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }
-                Sub(stringResource(R.string.high_contrast_desc))
-                Spacer(Modifier.height(8.dp))
-                Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }
-                Sub(stringResource(R.string.large_keys_desc))
-            }
+            // Theme, Clipboard, Feedback, Accessibility...
+            Sec(stringResource(R.string.section_theme)) { Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }; Sub(stringResource(R.string.theme_desc)) }
+            Sec(stringResource(R.string.section_clipboard)) { Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }; Sub(stringResource(R.string.clipboard_desc)) }
+            Sec(stringResource(R.string.section_feedback)) { Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }; Sub(stringResource(R.string.sound_desc)) }
+            Sec(stringResource(R.string.section_accessibility)) { Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }; Sub(stringResource(R.string.high_contrast_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }; Sub(stringResource(R.string.large_keys_desc)) }
             Spacer(Modifier.height(32.dp))
         }
     }
 }
 
-@Composable private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge); Switch(checked = checked, onCheckedChange = onChange)
-    }
-}
-
-@Composable private fun Sub(text: String) {
-    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable private fun Sec(title: String, content: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(12.dp)); content()
-        }
-    }
-}
+@Composable private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(label, style = MaterialTheme.typography.bodyLarge); Switch(checked = checked, onCheckedChange = onChange) } }
+@Composable private fun Sub(text: String) { Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+@Composable private fun Sec(title: String, content: @Composable () -> Unit) { Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) { Column(Modifier.padding(16.dp)) { Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(12.dp)); content() } } }

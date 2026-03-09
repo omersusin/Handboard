@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,8 +67,18 @@ fun KeyboardView(
     val layout = layoutSwitcher.currentLayout
     var currentPanel by remember { mutableStateOf(KeyboardPanel.KEYBOARD) }
     val scope = rememberCoroutineScope()
-    val hasSymbolRows2 = layout.symbolRows2.isNotEmpty()
+    
+    // Search specific states
+    var searchQuery by remember { mutableStateOf("") }
+    val searchEngine = remember(clipboardHistory) { SearchEngine(clipboardHistory) }
+    val searchResults = remember { mutableStateListOf<SearchResult>() }
 
+    LaunchedEffect(searchQuery) {
+        searchResults.clear()
+        if (searchQuery.isNotBlank()) searchResults.addAll(searchEngine.search(searchQuery))
+    }
+
+    val hasSymbolRows2 = layout.symbolRows2.isNotEmpty()
     val currentRows = when (state.currentLayer) {
         KeyboardLayer.LETTERS -> layout.letterRows
         KeyboardLayer.SYMBOLS -> layout.symbolRows
@@ -77,154 +89,88 @@ fun KeyboardView(
         KeyData(it, KeyAction.Text(it), 1f, KeyStyle.NORMAL)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-            .background(KeyboardBackground)
-    ) {
-        // Suggestion bar
-        if (currentPanel == KeyboardPanel.KEYBOARD) {
-            suggestionBar?.invoke()
+    Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)).background(KeyboardBackground)) {
+        
+        if (currentPanel == KeyboardPanel.KEYBOARD) suggestionBar?.invoke()
+
+        if (currentPanel != KeyboardPanel.SEARCH) {
+            LayoutToolbar(
+                currentLayoutName = layoutSwitcher.currentLayoutName, currentPanel = currentPanel, clipboardEnabled = clipboardEnabled,
+                onSwitchLayout = {
+                    layoutSwitcher.nextLayout()
+                    state.switchToLetters()
+                    currentPanel = KeyboardPanel.KEYBOARD
+                    scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
+                },
+                onSwitchPanel = { currentPanel = it; if (it == KeyboardPanel.SEARCH) searchQuery = "" }
+            )
+        } else {
+            SearchPanel(
+                query = searchQuery, results = searchResults, heightScale = heightScale,
+                onResultClick = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; searchQuery = "" },
+                onClose = { currentPanel = KeyboardPanel.KEYBOARD; searchQuery = "" }
+            )
         }
 
-        // Toolbar
-        LayoutToolbar(
-            currentLayoutName = layoutSwitcher.currentLayoutName,
-            currentPanel = currentPanel,
-            clipboardEnabled = clipboardEnabled,
-            onSwitchLayout = {
-                layoutSwitcher.nextLayout()
-                state.switchToLetters()
-                currentPanel = KeyboardPanel.KEYBOARD
-                scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
-            },
-            onSwitchPanel = { currentPanel = it }
-        )
-
-        // Unified panel container
-        when (currentPanel) {
-            KeyboardPanel.KEYBOARD -> {
-                key(layoutSwitcher.currentLayoutName, state.currentLayer) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight()
-                            .padding(horizontal = 4.dp)
-                            .padding(bottom = 6.dp)
-                    ) {
-                        // Number row
-                        if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(NumberRowBackground)
-                                    .padding(vertical = 1.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                numberRow.forEach { kd ->
-                                    KeyView(
-                                        modifier = Modifier.weight(1f),
-                                        keyData = kd, isShifted = false, isCapsLock = false,
-                                        currentLayer = state.currentLayer,
-                                        heightScale = heightScale * 0.8f,
-                                        hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
-                                        onClick = { onTextInput(kd.label) }
-                                    )
-                                }
+        // Render KEYS if we are in KEYBOARD or SEARCH mode
+        if (currentPanel == KeyboardPanel.KEYBOARD || currentPanel == KeyboardPanel.SEARCH) {
+            key(layoutSwitcher.currentLayoutName, state.currentLayer) {
+                Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 4.dp).padding(bottom = 6.dp)) {
+                    if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {
+                        Row(modifier = Modifier.fillMaxWidth().background(NumberRowBackground).padding(vertical = 1.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            numberRow.forEach { kd ->
+                                KeyView(modifier = Modifier.weight(1f), keyData = kd, isShifted = false, isCapsLock = false, currentLayer = state.currentLayer, heightScale = heightScale * 0.8f, hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
+                                    onClick = { 
+                                        if (currentPanel == KeyboardPanel.SEARCH) searchQuery += kd.label else onTextInput(kd.label)
+                                    }
+                                )
                             }
                         }
+                    }
 
-                        // Key rows
-                        currentRows.forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)
-                            ) {
-                                row.forEach { kd ->
-                                    KeyView(
-                                        modifier = Modifier.weight(kd.widthWeight),
-                                        keyData = kd,
-                                        isShifted = state.shouldUpperCase,
-                                        isCapsLock = state.isCapsLock,
-                                        currentLayer = state.currentLayer,
-                                        heightScale = heightScale,
-                                        hapticEnabled = hapticEnabled,
-                                        soundEnabled = soundEnabled,
-                                        onCursorMove = if (spacebarCursor && kd.action is KeyAction.Space) {
-                                            { dir -> onCursorMove(dir) }
-                                        } else null,
-                                        onAltChar = { onTextInput(it) },
-                                        onClick = {
+                    currentRows.forEach { row ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                            row.forEach { kd ->
+                                KeyView(
+                                    modifier = Modifier.weight(kd.widthWeight), keyData = kd, isShifted = state.shouldUpperCase, isCapsLock = state.isCapsLock, currentLayer = state.currentLayer, heightScale = heightScale, hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
+                                    onCursorMove = if (spacebarCursor && kd.action is KeyAction.Space) { { dir -> onCursorMove(dir) } } else null,
+                                    onAltChar = { if (currentPanel == KeyboardPanel.SEARCH) searchQuery += it else onTextInput(it) },
+                                    onClick = {
+                                        if (currentPanel == KeyboardPanel.SEARCH) {
+                                            when (val act = kd.action) {
+                                                is KeyAction.Text -> searchQuery += if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) act.char.uppercase() else act.char
+                                                is KeyAction.Space -> searchQuery += " "
+                                                is KeyAction.Backspace -> if (searchQuery.isNotEmpty()) searchQuery = searchQuery.dropLast(1)
+                                                is KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
+                                                is KeyAction.SwitchToSymbols -> state.switchToSymbols()
+                                                is KeyAction.SwitchToLetters -> state.switchToLetters()
+                                                else -> {}
+                                            }
+                                        } else {
                                             handleKeyPress(kd, state, hasSymbolRows2, onTextInput, onBackspace, onEnter)
                                         }
-                                    )
-                                }
+                                    }
+                                )
                             }
                         }
                     }
                 }
             }
-
-            KeyboardPanel.EMOJI -> PanelContainer {
-                EmojiView(heightScale = heightScale, onEmojiClick = { onEmojiInput(it) }, onBackspace = onBackspace)
-            }
-
-            KeyboardPanel.CLIPBOARD -> PanelContainer {
-                if (clipboardHistory != null) {
-                    ClipboardView(clipboardHistory = clipboardHistory, heightScale = heightScale,
-                        onPasteText = { onTextInput(it) }, onPasteImage = { onPasteImage(it) },
-                        onClearAll = { clipboardHistory.clearAll() })
-                }
-            }
-
-            KeyboardPanel.KAOMOJI -> PanelContainer {
-                KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
-            }
-
-            KeyboardPanel.TEXT_EDITING -> PanelContainer {
-                TextEditingBar(
-                    onCursorLeft = { onCursorMove(-1) }, onCursorRight = { onCursorMove(1) },
-                    onCursorHome = onCursorHome, onCursorEnd = onCursorEnd,
-                    onSelectAll = onSelectAll, onCopy = onCopy, onCut = onCut,
-                    onPaste = onPaste, onUndo = onUndo, onRedo = onRedo,
-                    onClose = { currentPanel = KeyboardPanel.KEYBOARD }
-                )
-            }
-
-            KeyboardPanel.SEARCH -> PanelContainer {
-                SearchPanel(
-                    heightScale = heightScale,
-                    clipboardHistory = if (clipboardEnabled) clipboardHistory else null,
-                    onResultClick = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD },
-                    onClose = { currentPanel = KeyboardPanel.KEYBOARD }
-                )
-            }
+        } else if (currentPanel == KeyboardPanel.EMOJI) {
+            EmojiView(heightScale = heightScale, onEmojiClick = { onEmojiInput(it) }, onBackspace = onBackspace)
+        } else if (currentPanel == KeyboardPanel.CLIPBOARD) {
+            if (clipboardHistory != null) ClipboardView(clipboardHistory = clipboardHistory, heightScale = heightScale, onPasteText = { onTextInput(it) }, onPasteImage = { onPasteImage(it) }, onClearAll = { clipboardHistory.clearAll() })
+        } else if (currentPanel == KeyboardPanel.KAOMOJI) {
+            KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
+        } else if (currentPanel == KeyboardPanel.TEXT_EDITING) {
+            TextEditingBar(onCursorLeft = { onCursorMove(-1) }, onCursorRight = { onCursorMove(1) }, onCursorHome = onCursorHome, onCursorEnd = onCursorEnd, onSelectAll = onSelectAll, onCopy = onCopy, onCut = onCut, onPaste = onPaste, onUndo = onUndo, onRedo = onRedo, onClose = { currentPanel = KeyboardPanel.KEYBOARD })
         }
     }
 }
 
-@Composable
-private fun PanelContainer(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .padding(bottom = 6.dp)
-    ) {
-        content()
-    }
-}
-
-private fun handleKeyPress(
-    keyData: KeyData, state: KeyboardState, hasSymbolRows2: Boolean,
-    onTextInput: (String) -> Unit, onBackspace: () -> Unit, onEnter: () -> Unit
-) {
+private fun handleKeyPress(keyData: KeyData, state: KeyboardState, hasSymbolRows2: Boolean, onTextInput: (String) -> Unit, onBackspace: () -> Unit, onEnter: () -> Unit) {
     when (val action = keyData.action) {
-        is KeyAction.Text -> {
-            val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char
-            onTextInput(text); state.onTextCommitted()
-        }
+        is KeyAction.Text -> { val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char; onTextInput(text); state.onTextCommitted() }
         KeyAction.Space -> { onTextInput(" "); state.onTextCommitted() }
         KeyAction.Backspace -> onBackspace()
         KeyAction.Enter -> onEnter()

@@ -34,6 +34,8 @@ import handboard.app.layout.ui.KeyboardWrapper
 import handboard.app.prediction.SuggestionBar
 import handboard.app.prediction.WordPredictor
 import handboard.app.settings.PreferencesManager
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
 
@@ -54,20 +56,21 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         prefs = PreferencesManager(this)
-        // Note: Actual dictionary loading happens dynamically inside the compose block below.
+        
+        val dictId = runBlocking { prefs.dictionaryId.first() }
+        predictor.loadDictionary(this, dictId)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-
-        val inputType = info?.inputType ?: 0
-        val cls = inputType and InputType.TYPE_MASK_CLASS
-        val variation = inputType and InputType.TYPE_MASK_VARIATION
-        isPasswordField = variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-            (cls == InputType.TYPE_CLASS_NUMBER && (inputType and InputType.TYPE_NUMBER_VARIATION_PASSWORD) != 0)
+        val t = info?.inputType ?: 0
+        val cls = t and InputType.TYPE_MASK_CLASS
+        val v = t and InputType.TYPE_MASK_VARIATION
+        isPasswordField = v == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+            v == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+            v == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+            (cls == InputType.TYPE_CLASS_NUMBER && (t and InputType.TYPE_NUMBER_VARIATION_PASSWORD) != 0)
         isNumberField = cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
     }
 
@@ -180,7 +183,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 suggestions.clear()
                 if (!showPredictions) return
                 val word = getCurrentWord()
-                suggestions.addAll(predictor.predict(word, suggestionCount, autocorrectEnabled))
+                suggestions.addAll(predictor.predict(word, suggestionCount))
             }
 
             fun commitText(text: String) {

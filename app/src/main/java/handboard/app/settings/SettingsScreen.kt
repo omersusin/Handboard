@@ -90,8 +90,9 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            
             // Dictionary
-            Sec(stringResource(R.string.section_dictionary)) {
+            Sec("Dictionary") {
                 availableDicts.forEach { dict ->
                     Row(
                         Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setDictionaryId(dict.id) } }.padding(vertical = 8.dp),
@@ -103,7 +104,7 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Sub(stringResource(R.string.dict_active, availableDicts.find { it.id == dictId }?.name ?: "Built-in", predictor.getDictionarySize()))
+                Sub("Active: ${availableDicts.find { it.id == dictId }?.name ?: "Built-in"} (${predictor.getDictionarySize()} words)")
             }
 
             // Predictions
@@ -111,8 +112,8 @@ fun SettingsScreen(
                 Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
                 if (predictionsEnabled) {
                     Spacer(Modifier.height(8.dp))
-                    Toggle(stringResource(R.string.autocorrect_toggle), autocorrectEnabled) { scope.launch { preferencesManager.setAutocorrectEnabled(it) } }
-                    Sub(stringResource(R.string.autocorrect_desc))
+                    Toggle("Auto-Correct", autocorrectEnabled) { scope.launch { preferencesManager.setAutocorrectEnabled(it) } }
+                    Sub("Suggest corrections for misspelled words")
                     Spacer(Modifier.height(16.dp))
                     Text(stringResource(R.string.suggestions_label, suggestionCount))
                     Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3)
@@ -120,11 +121,11 @@ fun SettingsScreen(
             }
 
             // Personal Dictionary
-            Sec(stringResource(R.string.section_personal_dict)) {
-                Text(stringResource(R.string.personal_words_count, personalWordsCount), style = MaterialTheme.typography.bodyLarge)
+            Sec("Personal Dictionary") {
+                Text("$personalWordsCount learned words", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { predictor.clearPersonalDictionary() }) {
-                    Text(stringResource(R.string.personal_clear))
+                    Text("Clear Personal Dictionary")
                 }
             }
 

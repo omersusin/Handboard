@@ -25,38 +25,64 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Accept Android SDK Licenses
+      - name: Accept SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Build Debug APK
         run: gradle assembleDebug
 
+      - name: Verify APK exists
+        run: |
+          ls -la app/build/outputs/apk/debug/
+          test -f app/build/outputs/apk/debug/app-debug.apk
+
       - name: Get tag
         id: tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk HandBoard-${{ steps.tag.outputs.VERSION }}.apk
+      - name: Prepare APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/HandBoard-${{ steps.tag.outputs.VERSION }}.apk
+          ls -la release/
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "HandBoard ${{ steps.tag.outputs.VERSION }}"
+          generate_release_notes: false
           body: |
             ## HandBoard ${{ steps.tag.outputs.VERSION }}
 
             ### 📥 Install
-            1. Download the APK below
-            2. Install on your Android device
-            3. Open HandBoard → Enable → Select as keyboard
+            1. Download **HandBoard-${{ steps.tag.outputs.VERSION }}.apk** below
+            2. Install on your Android 7.0+ device
+            3. Open HandBoard app → Enable → Select as keyboard
 
-            ### ✨ Included
-            - 4 keyboard layouts (QWERTY, Right Hand, Left Hand, Thumb)
+            ### ✨ What's New in v2.0
+            - 🔍 **Inline search panel** — search emoji, kaomoji, clipboard from keyboard
+            - ✎ **Text editing panel** — cursor control, copy/cut/paste, undo/redo
+            - 📝 **Long press accent characters** — à, é, ñ, ü, ş, etc.
+            - 🔢 **Optional number row**
+            - ⌨️ **Spacebar cursor control** — swipe to move cursor
+            - 🔠 **Auto-capitalize** after period
+            - (◕‿◕) **Kaomoji panel** — 100+ kaomoji in 8 categories
+            - 🔊 **Key sound** option
+            - ♿ **Large keys mode** & **High contrast** option
+            - 📋 **Privacy-respecting clipboard** (opt-in, off by default)
+            - 🧠 **Persistent word learning** — survives restarts
+            - 🎨 **App icon** added
+            - 📱 **Smart setup screen** — shows ✓ status indicators
+
+            ### 📋 Full Feature List
+            - 4 layouts (QWERTY, Right Hand, Left Hand, Thumb)
+            - 2 symbol layers + accented characters
             - 3600+ emojis (Google emoji2)
-            - Word prediction with persistent learning
-            - Clipboard history (opt-in)
+            - Trie + Bigram word prediction
             - Customizable size, position, theme
+            - Material You (Android 12+)
             - Android 7.0+ support
-          files: HandBoard-${{ steps.tag.outputs.VERSION }}.apk
+          files: release/HandBoard-${{ steps.tag.outputs.VERSION }}.apk
+          fail_on_unmatched_files: true
           draft: false
           prerelease: false

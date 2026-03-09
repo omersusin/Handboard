@@ -63,7 +63,6 @@ fun KeyboardView(
     val layout = layoutSwitcher.currentLayout
     var currentPanel by remember { mutableStateOf(KeyboardPanel.KEYBOARD) }
     val scope = rememberCoroutineScope()
-
     val hasSymbolRows2 = layout.symbolRows2.isNotEmpty()
 
     val currentRows = when (state.currentLayer) {
@@ -72,7 +71,6 @@ fun KeyboardView(
         KeyboardLayer.SYMBOLS2 -> if (hasSymbolRows2) layout.symbolRows2 else layout.symbolRows
     }
 
-    // Number row data
     val numberRow = listOf("1","2","3","4","5","6","7","8","9","0").map {
         KeyData(it, KeyAction.Text(it), 1f, KeyStyle.NORMAL)
     }
@@ -83,12 +81,8 @@ fun KeyboardView(
             .wrapContentHeight()
             .background(KeyboardBackground)
     ) {
-        // Suggestion bar (keyboard panel only)
-        if (currentPanel == KeyboardPanel.KEYBOARD) {
-            suggestionBar?.invoke()
-        }
+        if (currentPanel == KeyboardPanel.KEYBOARD) suggestionBar?.invoke()
 
-        // Toolbar
         LayoutToolbar(
             currentLayoutName = layoutSwitcher.currentLayoutName,
             currentPanel = currentPanel,
@@ -99,10 +93,9 @@ fun KeyboardView(
                 currentPanel = KeyboardPanel.KEYBOARD
                 scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
             },
-            onSwitchPanel = { panel -> currentPanel = panel }
+            onSwitchPanel = { currentPanel = it }
         )
 
-        // Panel content
         when (currentPanel) {
             KeyboardPanel.KEYBOARD -> {
                 key(layoutSwitcher.currentLayoutName, state.currentLayer) {
@@ -113,57 +106,38 @@ fun KeyboardView(
                             .padding(horizontal = 3.dp)
                             .padding(bottom = 8.dp)
                     ) {
-                        // Optional number row
                         if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(NumberRowBackground)
-                                    .padding(vertical = 1.dp),
+                                modifier = Modifier.fillMaxWidth().background(NumberRowBackground).padding(vertical = 1.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                numberRow.forEach { keyData ->
+                                numberRow.forEach { kd ->
                                     KeyView(
-                                        modifier = Modifier.weight(1f),
-                                        keyData = keyData,
-                                        isShifted = false,
-                                        isCapsLock = false,
+                                        modifier = Modifier.weight(1f), keyData = kd,
+                                        isShifted = false, isCapsLock = false,
                                         currentLayer = state.currentLayer,
                                         heightScale = heightScale * 0.8f,
-                                        hapticEnabled = hapticEnabled,
-                                        soundEnabled = soundEnabled,
-                                        onClick = { onTextInput(keyData.label) }
+                                        hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
+                                        onClick = { onTextInput(kd.label) }
                                     )
                                 }
                             }
                         }
 
-                        // Main key rows
                         currentRows.forEach { row ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 1.dp)
-                            ) {
-                                row.forEach { keyData ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                                row.forEach { kd ->
                                     KeyView(
-                                        modifier = Modifier.weight(keyData.widthWeight),
-                                        keyData = keyData,
-                                        isShifted = state.shouldUpperCase,
-                                        isCapsLock = state.isCapsLock,
-                                        currentLayer = state.currentLayer,
-                                        heightScale = heightScale,
-                                        hapticEnabled = hapticEnabled,
-                                        soundEnabled = soundEnabled,
-                                        onCursorMove = if (spacebarCursor && keyData.action is KeyAction.Space) {
+                                        modifier = Modifier.weight(kd.widthWeight), keyData = kd,
+                                        isShifted = state.shouldUpperCase, isCapsLock = state.isCapsLock,
+                                        currentLayer = state.currentLayer, heightScale = heightScale,
+                                        hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
+                                        onCursorMove = if (spacebarCursor && kd.action is KeyAction.Space) {
                                             { dir -> onCursorMove(dir) }
                                         } else null,
-                                        onAltChar = { char -> onTextInput(char) },
+                                        onAltChar = { onTextInput(it) },
                                         onClick = {
-                                            handleKeyPress(
-                                                keyData, state, hasSymbolRows2,
-                                                onTextInput, onBackspace, onEnter
-                                            )
+                                            handleKeyPress(kd, state, hasSymbolRows2, onTextInput, onBackspace, onEnter)
                                         }
                                     )
                                 }
@@ -173,45 +147,36 @@ fun KeyboardView(
                 }
             }
 
-            KeyboardPanel.EMOJI -> {
-                EmojiView(
-                    heightScale = heightScale,
-                    onEmojiClick = { onEmojiInput(it) },
-                    onBackspace = onBackspace
-                )
-            }
+            KeyboardPanel.EMOJI -> EmojiView(heightScale = heightScale, onEmojiClick = { onEmojiInput(it) }, onBackspace = onBackspace)
 
             KeyboardPanel.CLIPBOARD -> {
                 if (clipboardHistory != null) {
-                    ClipboardView(
-                        clipboardHistory = clipboardHistory,
-                        heightScale = heightScale,
-                        onPasteText = { onTextInput(it) },
-                        onPasteImage = { onPasteImage(it) },
-                        onClearAll = { clipboardHistory.clearAll() }
-                    )
+                    ClipboardView(clipboardHistory = clipboardHistory, heightScale = heightScale,
+                        onPasteText = { onTextInput(it) }, onPasteImage = { onPasteImage(it) },
+                        onClearAll = { clipboardHistory.clearAll() })
                 }
             }
 
-            KeyboardPanel.KAOMOJI -> {
-                KaomojiView(
-                    heightScale = heightScale,
-                    onKaomojiClick = { onTextInput(it) }
-                )
-            }
+            KeyboardPanel.KAOMOJI -> KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
 
             KeyboardPanel.TEXT_EDITING -> {
                 TextEditingBar(
-                    onCursorLeft = { onCursorMove(-1) },
-                    onCursorRight = { onCursorMove(1) },
-                    onCursorHome = onCursorHome,
-                    onCursorEnd = onCursorEnd,
-                    onSelectAll = onSelectAll,
-                    onCopy = onCopy,
-                    onCut = onCut,
-                    onPaste = onPaste,
-                    onUndo = onUndo,
-                    onRedo = onRedo,
+                    onCursorLeft = { onCursorMove(-1) }, onCursorRight = { onCursorMove(1) },
+                    onCursorHome = onCursorHome, onCursorEnd = onCursorEnd,
+                    onSelectAll = onSelectAll, onCopy = onCopy, onCut = onCut,
+                    onPaste = onPaste, onUndo = onUndo, onRedo = onRedo,
+                    onClose = { currentPanel = KeyboardPanel.KEYBOARD }
+                )
+            }
+
+            KeyboardPanel.SEARCH -> {
+                SearchPanel(
+                    heightScale = heightScale,
+                    clipboardHistory = if (clipboardEnabled) clipboardHistory else null,
+                    onResultClick = { value ->
+                        onTextInput(value)
+                        currentPanel = KeyboardPanel.KEYBOARD
+                    },
                     onClose = { currentPanel = KeyboardPanel.KEYBOARD }
                 )
             }
@@ -220,25 +185,15 @@ fun KeyboardView(
 }
 
 private fun handleKeyPress(
-    keyData: KeyData,
-    state: KeyboardState,
-    hasSymbolRows2: Boolean,
-    onTextInput: (String) -> Unit,
-    onBackspace: () -> Unit,
-    onEnter: () -> Unit
+    keyData: KeyData, state: KeyboardState, hasSymbolRows2: Boolean,
+    onTextInput: (String) -> Unit, onBackspace: () -> Unit, onEnter: () -> Unit
 ) {
     when (val action = keyData.action) {
         is KeyAction.Text -> {
-            val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) {
-                action.char.uppercase()
-            } else action.char
-            onTextInput(text)
-            state.onTextCommitted()
+            val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char
+            onTextInput(text); state.onTextCommitted()
         }
-        KeyAction.Space -> {
-            onTextInput(" ")
-            state.onTextCommitted()
-        }
+        KeyAction.Space -> { onTextInput(" "); state.onTextCommitted() }
         KeyAction.Backspace -> onBackspace()
         KeyAction.Enter -> onEnter()
         KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)

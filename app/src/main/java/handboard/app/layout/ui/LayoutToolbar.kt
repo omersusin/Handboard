@@ -28,7 +28,7 @@ import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.ShiftActiveBackground
 
 enum class KeyboardPanel {
-    KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING
+    KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING, SEARCH
 }
 
 @Composable
@@ -46,7 +46,6 @@ fun LayoutToolbar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: panel name
         Text(
             text = when (currentPanel) {
                 KeyboardPanel.KEYBOARD -> currentLayoutName
@@ -54,24 +53,31 @@ fun LayoutToolbar(
                 KeyboardPanel.CLIPBOARD -> "Clipboard"
                 KeyboardPanel.KAOMOJI -> "Kaomoji"
                 KeyboardPanel.TEXT_EDITING -> "Editing"
+                KeyboardPanel.SEARCH -> "Search"
             },
-            color = KeyTextDim,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            color = KeyTextDim, fontSize = 11.sp, fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(start = 6.dp)
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // ABC button (when not on keyboard)
             if (currentPanel != KeyboardPanel.KEYBOARD) {
-                ToolbarBtn("ABC", "Switch to keyboard", currentPanel == KeyboardPanel.KEYBOARD) {
+                Btn("ABC", "Switch to keyboard", currentPanel == KeyboardPanel.KEYBOARD) {
                     onSwitchPanel(KeyboardPanel.KEYBOARD)
                 }
                 Spacer(Modifier.width(3.dp))
             }
 
+            // Search
+            Btn("🔍", "Search", currentPanel == KeyboardPanel.SEARCH) {
+                onSwitchPanel(
+                    if (currentPanel == KeyboardPanel.SEARCH) KeyboardPanel.KEYBOARD
+                    else KeyboardPanel.SEARCH
+                )
+            }
+            Spacer(Modifier.width(3.dp))
+
             // Text editing
-            ToolbarBtn("✎", "Text editing", currentPanel == KeyboardPanel.TEXT_EDITING) {
+            Btn("✎", "Text editing", currentPanel == KeyboardPanel.TEXT_EDITING) {
                 onSwitchPanel(
                     if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD
                     else KeyboardPanel.TEXT_EDITING
@@ -79,11 +85,10 @@ fun LayoutToolbar(
             }
             Spacer(Modifier.width(3.dp))
 
-            // Clipboard (only if enabled)
+            // Clipboard
             if (clipboardEnabled) {
-                ToolbarBtn(content = { ClipboardIcon(tint = KeyText, size = 16.dp) },
-                    desc = "Clipboard",
-                    active = currentPanel == KeyboardPanel.CLIPBOARD) {
+                Btn(content = { ClipboardIcon(tint = KeyText, size = 16.dp) },
+                    desc = "Clipboard", active = currentPanel == KeyboardPanel.CLIPBOARD) {
                     onSwitchPanel(
                         if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD
                         else KeyboardPanel.CLIPBOARD
@@ -93,7 +98,7 @@ fun LayoutToolbar(
             }
 
             // Kaomoji
-            ToolbarBtn("(◕‿◕)", "Kaomoji", currentPanel == KeyboardPanel.KAOMOJI) {
+            Btn("(◕‿◕)", "Kaomoji", currentPanel == KeyboardPanel.KAOMOJI) {
                 onSwitchPanel(
                     if (currentPanel == KeyboardPanel.KAOMOJI) KeyboardPanel.KEYBOARD
                     else KeyboardPanel.KAOMOJI
@@ -102,7 +107,7 @@ fun LayoutToolbar(
             Spacer(Modifier.width(3.dp))
 
             // Emoji
-            ToolbarBtn("😊", "Emoji", currentPanel == KeyboardPanel.EMOJI) {
+            Btn("😊", "Emoji", currentPanel == KeyboardPanel.EMOJI) {
                 onSwitchPanel(
                     if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD
                     else KeyboardPanel.EMOJI
@@ -111,44 +116,29 @@ fun LayoutToolbar(
             Spacer(Modifier.width(3.dp))
 
             // Layout switch
-            ToolbarBtn(content = { GlobeIcon(tint = KeyText, size = 16.dp) },
+            Btn(content = { GlobeIcon(tint = KeyText, size = 16.dp) },
                 desc = "Switch layout", active = false, onClick = onSwitchLayout)
         }
     }
 }
 
 @Composable
-private fun ToolbarBtn(
-    label: String,
-    desc: String,
-    active: Boolean,
-    onClick: () -> Unit
-) {
-    ToolbarBtn(content = {
+private fun Btn(label: String, desc: String, active: Boolean, onClick: () -> Unit) {
+    Btn(content = {
         Text(label, color = KeyText, fontSize = if (label.length > 3) 10.sp else 12.sp,
             fontWeight = FontWeight.Medium, maxLines = 1)
     }, desc = desc, active = active, onClick = onClick)
 }
 
 @Composable
-private fun ToolbarBtn(
-    content: @Composable () -> Unit,
-    desc: String,
-    active: Boolean,
-    onClick: () -> Unit
-) {
+private fun Btn(content: @Composable () -> Unit, desc: String, active: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(if (active) ShiftActiveBackground else ActionKeyBackground)
             .clickable(onClick = onClick)
-            .semantics {
-                contentDescription = desc
-                role = Role.Button
-            }
+            .semantics { contentDescription = desc; role = Role.Button }
             .padding(horizontal = 8.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
+    ) { content() }
 }

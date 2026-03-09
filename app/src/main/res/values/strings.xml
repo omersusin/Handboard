@@ -56,7 +56,7 @@
     <string name="high_contrast_desc">Increase key border contrast for visibility</string>
     <string name="large_keys_toggle">Large Keys</string>
     <string name="large_keys_desc">Increase key size for easier tapping</string>
-    <string name="about_version">HandBoard v1.0.0</string>
+    <string name="about_version">HandBoard v2.0.0</string>
     <string name="about_desc">One-handed keyboard for everyone</string>
 
     <!-- Keyboard -->

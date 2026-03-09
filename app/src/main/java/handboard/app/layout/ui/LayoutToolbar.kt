@@ -29,63 +29,71 @@ import handboard.app.core.theme.KeyText
 import handboard.app.core.theme.KeyTextDim
 import handboard.app.core.theme.ShiftActiveBackground
 
-enum class KeyboardPanel {
-    KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING, SEARCH, TRANSLATE
-}
+enum class KeyboardPanel { KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING, SEARCH, TRANSLATE, CURRENCY }
 
 @Composable
 fun LayoutToolbar(
-    currentLayoutName: String,
-    currentPanel: KeyboardPanel,
-    clipboardEnabled: Boolean,
-    onSwitchLayout: () -> Unit,
-    onSwitchPanel: (KeyboardPanel) -> Unit
+    currentLayoutName: String, currentPanel: KeyboardPanel, clipboardEnabled: Boolean,
+    onSwitchLayout: () -> Unit, onSwitchPanel: (KeyboardPanel) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(38.dp).padding(horizontal = 4.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = when (currentPanel) {
                 KeyboardPanel.KEYBOARD -> currentLayoutName
-                KeyboardPanel.EMOJI -> "Emoji"
-                KeyboardPanel.CLIPBOARD -> "Clipboard"
-                KeyboardPanel.KAOMOJI -> "Kaomoji"
-                KeyboardPanel.TEXT_EDITING -> "Edit"
-                KeyboardPanel.SEARCH -> "Search"
-                KeyboardPanel.TRANSLATE -> "Translate"
-            },
-            color = KeyTextDim, fontSize = 11.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 4.dp)
+                KeyboardPanel.EMOJI -> "Emoji"; KeyboardPanel.CLIPBOARD -> "Clipboard"
+                KeyboardPanel.KAOMOJI -> "Kaomoji"; KeyboardPanel.TEXT_EDITING -> "Edit"
+                KeyboardPanel.SEARCH -> "Search"; KeyboardPanel.TRANSLATE -> "Translate"; KeyboardPanel.CURRENCY -> "Currency"
+            }, color = KeyTextDim, fontSize = 11.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 4.dp)
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            
+            // 1. Keyboard Switch (if in a panel)
             if (currentPanel != KeyboardPanel.KEYBOARD) {
-                ToolbarIconButton({ Text("ABC", color = KeyText, fontSize = 11.sp, fontWeight = FontWeight.Bold) }, "Keyboard", false) { onSwitchPanel(KeyboardPanel.KEYBOARD) }
+                ToolbarIconButton({ KeyboardIcon(tint = KeyText, size = 16.dp) }, "Keyboard", false) { onSwitchPanel(KeyboardPanel.KEYBOARD) }
             }
             
-            ToolbarIconButton({ Text("A文", color = KeyText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }, "Translate", currentPanel == KeyboardPanel.TRANSLATE) {
-                onSwitchPanel(if (currentPanel == KeyboardPanel.TRANSLATE) KeyboardPanel.KEYBOARD else KeyboardPanel.TRANSLATE)
+            // 2. Currency
+            ToolbarIconButton({ CurrencyIcon(tint = KeyText, size = 16.dp) }, "Currency", currentPanel == KeyboardPanel.CURRENCY) { 
+                onSwitchPanel(if (currentPanel == KeyboardPanel.CURRENCY) KeyboardPanel.KEYBOARD else KeyboardPanel.CURRENCY) 
             }
-
-            ToolbarIconButton({ SearchIcon(tint = KeyText, size = 16.dp) }, "Search", currentPanel == KeyboardPanel.SEARCH) {
-                onSwitchPanel(if (currentPanel == KeyboardPanel.SEARCH) KeyboardPanel.KEYBOARD else KeyboardPanel.SEARCH)
+            
+            // 3. Translate
+            ToolbarIconButton({ TranslateIcon(tint = KeyText, size = 16.dp) }, "Translate", currentPanel == KeyboardPanel.TRANSLATE) { 
+                onSwitchPanel(if (currentPanel == KeyboardPanel.TRANSLATE) KeyboardPanel.KEYBOARD else KeyboardPanel.TRANSLATE) 
             }
-
-            ToolbarIconButton({ EditIcon(tint = KeyText, size = 16.dp) }, "Text editing", currentPanel == KeyboardPanel.TEXT_EDITING) {
-                onSwitchPanel(if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD else KeyboardPanel.TEXT_EDITING)
+            
+            // 4. Search
+            ToolbarIconButton({ SearchIcon(tint = KeyText, size = 16.dp) }, "Search", currentPanel == KeyboardPanel.SEARCH) { 
+                onSwitchPanel(if (currentPanel == KeyboardPanel.SEARCH) KeyboardPanel.KEYBOARD else KeyboardPanel.SEARCH) 
             }
-
+            
+            // 5. Edit
+            ToolbarIconButton({ EditIcon(tint = KeyText, size = 16.dp) }, "Text editing", currentPanel == KeyboardPanel.TEXT_EDITING) { 
+                onSwitchPanel(if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD else KeyboardPanel.TEXT_EDITING) 
+            }
+            
+            // 6. Clipboard
             if (clipboardEnabled) {
-                ToolbarIconButton({ ClipboardIcon(tint = KeyText, size = 16.dp) }, "Clipboard", currentPanel == KeyboardPanel.CLIPBOARD) {
-                    onSwitchPanel(if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD else KeyboardPanel.CLIPBOARD)
+                ToolbarIconButton({ ClipboardIcon(tint = KeyText, size = 16.dp) }, "Clipboard", currentPanel == KeyboardPanel.CLIPBOARD) { 
+                    onSwitchPanel(if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD else KeyboardPanel.CLIPBOARD) 
                 }
             }
-
-            ToolbarIconButton({ EmojiIcon(tint = KeyText, size = 16.dp) }, "Emoji", currentPanel == KeyboardPanel.EMOJI) {
-                onSwitchPanel(if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.EMOJI)
+            
+            // 7. Kaomoji
+            ToolbarIconButton({ KaomojiIcon(tint = KeyText, size = 16.dp) }, "Kaomoji", currentPanel == KeyboardPanel.KAOMOJI) { 
+                onSwitchPanel(if (currentPanel == KeyboardPanel.KAOMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.KAOMOJI) 
             }
-
+            
+            // 8. Emoji
+            ToolbarIconButton({ EmojiIcon(tint = KeyText, size = 16.dp) }, "Emoji", currentPanel == KeyboardPanel.EMOJI) { 
+                onSwitchPanel(if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.EMOJI) 
+            }
+            
+            // 9. Globe (Layout Switcher)
             ToolbarIconButton({ GlobeIcon(tint = KeyText, size = 16.dp) }, "Switch layout", false, onSwitchLayout)
         }
     }
@@ -93,9 +101,5 @@ fun LayoutToolbar(
 
 @Composable
 private fun ToolbarIconButton(content: @Composable () -> Unit, description: String, isActive: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(if (isActive) ShiftActiveBackground else ActionKeyBackground).clickable(onClick = onClick)
-            .semantics { contentDescription = description; role = Role.Button },
-        contentAlignment = Alignment.Center
-    ) { content() }
+    Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(if (isActive) ShiftActiveBackground else ActionKeyBackground).clickable(onClick = onClick).semantics { contentDescription = description; role = Role.Button }, contentAlignment = Alignment.Center) { content() }
 }

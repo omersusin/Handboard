@@ -4,10 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import java.io.File
-import kotlin.coroutines.coroutineContext
 
 class AospDictConverter(private val context: Context) {
 
@@ -67,8 +66,9 @@ class AospDictConverter(private val context: Context) {
         var pos = 0
 
         while (pos < bytes.size) {
+            // Kesin çözüm: Her 10.000 byte'da bir yield çağırarak UI thread'i dondurmayı engelliyoruz
             if (pos % 10_000 == 0) {
-                coroutineContext.ensureActive()
+                yield()
             }
 
             val decoded = decodeUtf8Char(bytes, pos)

@@ -37,6 +37,7 @@ class PreferencesManager(private val context: Context) {
         val KEY_LARGE_KEYS = booleanPreferencesKey("large_keys")
         val KEY_MULTILINGUAL = booleanPreferencesKey("multilingual_enabled")
         val KEY_ACTIVE_DICTS = stringSetPreferencesKey("active_dicts")
+        val KEY_DICTIONARY = stringPreferencesKey("dictionary_id")
     }
 
     val keyboardHeight: Flow<Float> = context.dataStore.data.map { it[KEY_HEIGHT] ?: 1.0f }
@@ -59,6 +60,7 @@ class PreferencesManager(private val context: Context) {
     val largeKeys: Flow<Boolean> = context.dataStore.data.map { it[KEY_LARGE_KEYS] ?: false }
     val multilingualEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_MULTILINGUAL] ?: false }
     val activeDicts: Flow<Set<String>> = context.dataStore.data.map { it[KEY_ACTIVE_DICTS] ?: setOf("en_us") }
+    val dictionaryId: Flow<String> = context.dataStore.data.map { it[KEY_DICTIONARY] ?: "en_us" }
 
     suspend fun setKeyboardHeight(v: Float) { context.dataStore.edit { it[KEY_HEIGHT] = v } }
     suspend fun setKeyboardWidth(v: Int) { context.dataStore.edit { it[KEY_WIDTH] = v } }
@@ -80,4 +82,5 @@ class PreferencesManager(private val context: Context) {
     suspend fun setLargeKeys(v: Boolean) { context.dataStore.edit { it[KEY_LARGE_KEYS] = v } }
     suspend fun setMultilingualEnabled(v: Boolean) { context.dataStore.edit { it[KEY_MULTILINGUAL] = v } }
     suspend fun setActiveDicts(v: Set<String>) { context.dataStore.edit { it[KEY_ACTIVE_DICTS] = v } }
+    suspend fun setDictionaryId(v: String) { context.dataStore.edit { it[KEY_DICTIONARY] = v } }
 }

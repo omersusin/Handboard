@@ -28,6 +28,7 @@ class PreferencesManager(private val context: Context) {
         val KEY_BOTTOM_PADDING = intPreferencesKey("bottom_padding")
         val KEY_CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
         val KEY_FOLLOW_SYSTEM_THEME = booleanPreferencesKey("follow_system_theme")
+        val KEY_THEME_PREFERENCE = stringPreferencesKey("theme_preference")
         val KEY_NUMBER_ROW = booleanPreferencesKey("number_row_enabled")
         val KEY_AUTO_CAPITALIZE = booleanPreferencesKey("auto_capitalize")
         val KEY_SPACEBAR_CURSOR = booleanPreferencesKey("spacebar_cursor")
@@ -48,6 +49,7 @@ class PreferencesManager(private val context: Context) {
     val bottomPadding: Flow<Int> = context.dataStore.data.map { it[KEY_BOTTOM_PADDING] ?: 0 }
     val clipboardEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CLIPBOARD_ENABLED] ?: false }
     val followSystemTheme: Flow<Boolean> = context.dataStore.data.map { it[KEY_FOLLOW_SYSTEM_THEME] ?: false }
+    val themePreference: Flow<String> = context.dataStore.data.map { it[KEY_THEME_PREFERENCE] ?: "system" }
     val numberRowEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_NUMBER_ROW] ?: false }
     val autoCapitalize: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_CAPITALIZE] ?: true }
     val spacebarCursor: Flow<Boolean> = context.dataStore.data.map { it[KEY_SPACEBAR_CURSOR] ?: true }
@@ -67,6 +69,7 @@ class PreferencesManager(private val context: Context) {
     suspend fun setBottomPadding(v: Int) { context.dataStore.edit { it[KEY_BOTTOM_PADDING] = v } }
     suspend fun setClipboardEnabled(v: Boolean) { context.dataStore.edit { it[KEY_CLIPBOARD_ENABLED] = v } }
     suspend fun setFollowSystemTheme(v: Boolean) { context.dataStore.edit { it[KEY_FOLLOW_SYSTEM_THEME] = v } }
+    suspend fun setThemePreference(v: String) { context.dataStore.edit { it[KEY_THEME_PREFERENCE] = v } }
     suspend fun setNumberRowEnabled(v: Boolean) { context.dataStore.edit { it[KEY_NUMBER_ROW] = v } }
     suspend fun setAutoCapitalize(v: Boolean) { context.dataStore.edit { it[KEY_AUTO_CAPITALIZE] = v } }
     suspend fun setSpacebarCursor(v: Boolean) { context.dataStore.edit { it[KEY_SPACEBAR_CURSOR] = v } }

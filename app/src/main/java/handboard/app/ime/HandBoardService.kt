@@ -141,7 +141,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 val snd by prefs.soundEnabled.collectAsState(initial = false)
                 val sc by prefs.suggestionCount.collectAsState(initial = 3)
                 val pe by prefs.predictionsEnabled.collectAsState(initial = true)
-                val acEnabled by prefs.autocorrectEnabled.collectAsState(initial = true)
                 val bp by prefs.bottomPadding.collectAsState(initial = 0)
                 val ce by prefs.clipboardEnabled.collectAsState(initial = false)
                 val nr by prefs.numberRowEnabled.collectAsState(initial = false)
@@ -173,7 +172,8 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
 
                 fun updateSuggestions() {
                     sugs.clear(); if (!showPred) return
-                    sugs.addAll(predictor.predict(getCurrentWord(), sc, acEnabled))
+                    // HATA DÜZELTİLDİ: Sadece 2 argüman yollanıyor!
+                    sugs.addAll(predictor.predict(getCurrentWord(), sc))
                 }
 
                 KeyboardWrapper(widthFraction = wp / 100f, alignment = al) {

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -159,10 +160,8 @@ fun ClipboardIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
         val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
         val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        drawRoundRect(tint, topLeft = Offset(w * 0.18f, h * 0.18f),
-            size = Size(w * 0.64f, h * 0.74f), cornerRadius = CornerRadius(w * 0.06f), style = stroke)
-        drawRoundRect(tint, topLeft = Offset(w * 0.34f, h * 0.06f),
-            size = Size(w * 0.32f, h * 0.18f), cornerRadius = CornerRadius(w * 0.04f), style = stroke)
+        drawRoundRect(color = tint, topLeft = Offset(w * 0.18f, h * 0.18f), size = Size(w * 0.64f, h * 0.74f), cornerRadius = CornerRadius(w * 0.06f), style = stroke)
+        drawRoundRect(color = tint, topLeft = Offset(w * 0.34f, h * 0.06f), size = Size(w * 0.32f, h * 0.18f), cornerRadius = CornerRadius(w * 0.04f), style = stroke)
         drawLine(tint, Offset(w * 0.30f, h * 0.45f), Offset(w * 0.70f, h * 0.45f), strokeWidth = sw * 0.6f)
         drawLine(tint, Offset(w * 0.30f, h * 0.58f), Offset(w * 0.70f, h * 0.58f), strokeWidth = sw * 0.6f)
         drawLine(tint, Offset(w * 0.30f, h * 0.71f), Offset(w * 0.55f, h * 0.71f), strokeWidth = sw * 0.6f)
@@ -213,23 +212,27 @@ fun TranslateIcon(tint: Color, size: Dp = 18.dp) {
 }
 
 @Composable
-fun CloseIcon(tint: Color, size: Dp = 18.dp) {
+fun ContentCopyIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
-        val s = this.size.minDimension; val stroke = s * 0.12f; val pad = s * 0.22f
-        drawLine(tint, Offset(pad, pad), Offset(s - pad, s - pad), stroke, StrokeCap.Round)
-        drawLine(tint, Offset(s - pad, pad), Offset(pad, s - pad), stroke, StrokeCap.Round)
+        val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
+        val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val backRect = Rect(left = w * 0.30f, top = h * 0.30f, right = w * 0.82f, bottom = h * 0.82f)
+        drawRoundRect(color = tint, topLeft = backRect.topLeft, size = backRect.size, cornerRadius = CornerRadius(w * 0.06f), style = Stroke(width = sw))
+        val frontRect = Rect(left = w * 0.18f, top = h * 0.18f, right = w * 0.70f, bottom = h * 0.70f)
+        drawRoundRect(color = Color.Transparent, topLeft = frontRect.topLeft, size = frontRect.size, cornerRadius = CornerRadius(w * 0.06f), style = Fill, blendMode = BlendMode.Clear)
+        drawRoundRect(color = tint, topLeft = frontRect.topLeft, size = frontRect.size, cornerRadius = CornerRadius(w * 0.06f), style = Stroke(width = sw))
     }
 }
 
 @Composable
-fun ClearIcon(tint: Color, size: Dp = 18.dp) {
+fun CurrencyIcon(tint: Color, size: Dp = 18.dp) {
     Canvas(modifier = Modifier.size(size)) {
-        val s = this.size.minDimension; val center = Offset(s / 2f, s / 2f)
-        val radius = s * 0.40f; val stroke = s * 0.10f; val xPad = s * 0.30f
-        drawCircle(color = tint.copy(alpha = 0.15f), radius = radius, center = center)
-        drawCircle(color = tint, radius = radius, center = center, style = Stroke(stroke))
-        drawLine(tint, Offset(xPad, xPad), Offset(s - xPad, s - xPad), stroke, StrokeCap.Round)
-        drawLine(tint, Offset(s - xPad, xPad), Offset(xPad, s - xPad), stroke, StrokeCap.Round)
+        val s = this.size.minDimension; val stroke = s * 0.10f; val center = Offset(s / 2f, s / 2f); val radius = s * 0.38f
+        drawCircle(tint, radius, center, style = Stroke(stroke))
+        val dollarStroke = stroke * 0.9f
+        drawArc(color = tint, startAngle = -30f, sweepAngle = -180f, useCenter = false, topLeft = Offset(center.x - s * 0.10f, center.y - s * 0.16f), size = Size(s * 0.20f, s * 0.16f), style = Stroke(dollarStroke, cap = StrokeCap.Round))
+        drawArc(color = tint, startAngle = 150f, sweepAngle = -180f, useCenter = false, topLeft = Offset(center.x - s * 0.10f, center.y), size = Size(s * 0.20f, s * 0.16f), style = Stroke(dollarStroke, cap = StrokeCap.Round))
+        drawLine(tint, Offset(center.x, center.y - s * 0.22f), Offset(center.x, center.y + s * 0.22f), dollarStroke, StrokeCap.Round)
     }
 }
 
@@ -282,30 +285,5 @@ fun TravelExploreIcon(tint: Color, size: Dp = 16.dp) {
         val magCenter = Offset(s * 0.72f, s * 0.72f); val magR = s * 0.12f
         drawCircle(tint, magR, magCenter, style = Stroke(stroke))
         drawLine(tint, Offset(magCenter.x + magR * 0.707f, magCenter.y + magR * 0.707f), Offset(s * 0.90f, s * 0.90f), stroke, StrokeCap.Round)
-    }
-}
-
-@Composable
-fun CurrencyExchangeIcon(tint: Color, size: Dp = 14.dp) {
-    Canvas(modifier = Modifier.size(size)) {
-        val s = this.size.minDimension; val stroke = s * 0.10f; val center = Offset(s / 2f, s / 2f); val radius = s * 0.38f
-        drawCircle(tint, radius, center, style = Stroke(stroke))
-        val dollarStroke = stroke * 0.9f
-        drawArc(color = tint, startAngle = -30f, sweepAngle = -180f, useCenter = false, topLeft = Offset(center.x - s * 0.10f, center.y - s * 0.16f), size = Size(s * 0.20f, s * 0.16f), style = Stroke(dollarStroke, cap = StrokeCap.Round))
-        drawArc(color = tint, startAngle = 150f, sweepAngle = -180f, useCenter = false, topLeft = Offset(center.x - s * 0.10f, center.y), size = Size(s * 0.20f, s * 0.16f), style = Stroke(dollarStroke, cap = StrokeCap.Round))
-        drawLine(tint, Offset(center.x, center.y - s * 0.22f), Offset(center.x, center.y + s * 0.22f), dollarStroke, StrokeCap.Round)
-    }
-}
-
-@Composable
-fun ContentCopyIcon(tint: Color, size: Dp = 18.dp) {
-    Canvas(modifier = Modifier.size(size)) {
-        val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
-        val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        val backRect = Rect(left = w * 0.30f, top = h * 0.30f, right = w * 0.82f, bottom = h * 0.82f)
-        drawRoundRect(color = tint, topLeft = backRect.topLeft, size = backRect.size, cornerRadius = CornerRadius(w * 0.06f), style = Stroke(width = sw))
-        val frontRect = Rect(left = w * 0.18f, top = h * 0.18f, right = w * 0.70f, bottom = h * 0.70f)
-        drawRoundRect(color = Color.Transparent, topLeft = frontRect.topLeft, size = frontRect.size, cornerRadius = CornerRadius(w * 0.06f), style = Fill, blendMode = BlendMode.Clear)
-        drawRoundRect(color = tint, topLeft = frontRect.topLeft, size = frontRect.size, cornerRadius = CornerRadius(w * 0.06f), style = Stroke(width = sw))
     }
 }

@@ -177,3 +177,29 @@ fun KaomojiIcon(tint: Color, size: Dp = 18.dp) {
         drawPath(smile, tint, style = stroke)
     }
 }
+
+// YENİ EKLENEN İKON (Hatasız Copy)
+@Composable
+fun CopyIcon(tint: Color, size: Dp = 18.dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
+        val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        
+        // Arka sayfa
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(w * 0.15f, h * 0.15f),
+            size = Size(w * 0.55f, h * 0.65f),
+            cornerRadius = CornerRadius(w * 0.06f),
+            style = stroke
+        )
+        // Ön sayfa (üstte ve sağda)
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(w * 0.30f, h * 0.25f),
+            size = Size(w * 0.55f, h * 0.65f),
+            cornerRadius = CornerRadius(w * 0.06f),
+            style = stroke
+        )
+    }
+}

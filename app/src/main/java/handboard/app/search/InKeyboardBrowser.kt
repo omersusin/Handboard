@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -25,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import handboard.app.layout.ui.CopyIcon
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -60,12 +60,13 @@ fun InKeyboardBrowser(
                         Text(currentUrl.removePrefix("https://").removePrefix("www."), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
+                    // KENDİ ÇİZDİĞİMİZ CopyIcon() KULLANILDI!
                     IconButton(
                         onClick = {
                             val cb = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             cb.setPrimaryClip(android.content.ClipData.newPlainText("URL", currentUrl))
                         }, modifier = Modifier.size(32.dp)
-                    ) { Icon(Icons.Default.ContentCopy, "Copy URL", Modifier.size(14.dp)) }
+                    ) { CopyIcon(tint = MaterialTheme.colorScheme.onSurface, size = 16.dp) }
 
                     IconButton(onClick = { onCommitText(currentUrl) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Share, "Paste", Modifier.size(14.dp)) }
                 }

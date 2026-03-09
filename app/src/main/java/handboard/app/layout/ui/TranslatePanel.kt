@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,8 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,7 +75,7 @@ fun TranslatePanel(
 
     Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().background(KeyboardBackground)) {
         
-        // Top Bar: Lang Selection & Swap
+        // Üst Bar: Dil Seçimi ve Yer Değiştirme
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -100,7 +97,7 @@ fun TranslatePanel(
             }
         }
 
-        // Language List Overlay
+        // Dil Seçim Menüsü Açık Değilse Çeviri Kutularını Göster
         if (showSrcMenu || showTrgMenu) {
             val isSource = showSrcMenu
             val mapItems = if (isSource) TranslationLanguages.items else TranslationLanguages.items.filterKeys { it != "auto" }
@@ -118,9 +115,9 @@ fun TranslatePanel(
                 }
             }
         } else {
-            // Input & Output Area
+            // Metin Giriş & Çıktı Alanı
             Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                // Input
+                // Kullanıcının yazdığı alan
                 Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(KeyBackground).padding(10.dp)) {
                     if (query.isEmpty()) Text("Type to translate...", color = KeyTextDim, fontSize = 14.sp)
                     else {
@@ -133,7 +130,7 @@ fun TranslatePanel(
                 
                 Spacer(Modifier.height(4.dp))
                 
-                // Output
+                // Çeviri Sonucu
                 Row(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically

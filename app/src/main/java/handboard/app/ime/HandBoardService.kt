@@ -3,6 +3,7 @@ package handboard.app.ime
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.text.InputType
+import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputContentInfo
@@ -14,9 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -44,7 +43,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
     private val wordPredictor = WordPredictor()
     private var clipboardHistory: ClipboardHistory? = null
 
-    // Editor state — read from EditorInfo
     private var isPasswordField = false
     private var isNumberField = false
 
@@ -64,7 +62,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         super.onStartInputView(info, restarting)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
-        // Detect field type (#4)
         val inputType = info?.inputType ?: 0
         val cls = inputType and InputType.TYPE_MASK_CLASS
         val variation = inputType and InputType.TYPE_MASK_VARIATION
@@ -80,20 +77,17 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
     }
 
-    /** Read current word from InputConnection — no local tracking (#2) */
     private fun getCurrentWord(): String {
         val ic = currentInputConnection ?: return ""
         val before = ic.getTextBeforeCursor(100, 0)?.toString() ?: return ""
         return wordPredictor.getCurrentWord(before)
     }
 
-    /** Proper backspace — handles emoji/multi-codepoint (#3) */
     private fun performBackspace() {
         val ic = currentInputConnection ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             ic.deleteSurroundingTextInCodePoints(1, 0)
         } else {
-            // Fallback: try to detect surrogate pairs
             val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
             if (before.length >= 2 && Character.isLowSurrogate(before.last()) &&
                 Character.isHighSurrogate(before[before.length - 2])) {
@@ -104,21 +98,77 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         }
     }
 
-    /** Paste image via commitContent (#10) */
+    private fun moveCursor(direction: Int) {
+        val ic = currentInputConnection ?: return
+        val code = if (direction > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+    }
+
+    private fun moveCursorHome() {
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MOVE_HOME))
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MOVE_HOME))
+    }
+
+    private fun moveCursorEnd() {
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MOVE_END))
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MOVE_END))
+    }
+
+    private fun selectAll() {
+        currentInputConnection?.performContextMenuAction(android.R.id.selectAll)
+    }
+
+    private fun copyText() {
+        currentInputConnection?.performContextMenuAction(android.R.id.copy)
+    }
+
+    private fun cutText() {
+        currentInputConnection?.performContextMenuAction(android.R.id.cut)
+    }
+
+    private fun pasteText() {
+        currentInputConnection?.performContextMenuAction(android.R.id.paste)
+    }
+
+    private fun undoAction() {
+        currentInputConnection?.sendKeyEvent(
+            KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_Z, 0, KeyEvent.META_CTRL_ON))
+        currentInputConnection?.sendKeyEvent(
+            KeyEvent(0, 0, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_Z, 0, KeyEvent.META_CTRL_ON))
+    }
+
+    private fun redoAction() {
+        currentInputConnection?.sendKeyEvent(
+            KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_Z, 0,
+                KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON))
+        currentInputConnection?.sendKeyEvent(
+            KeyEvent(0, 0, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_Z, 0,
+                KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON))
+    }
+
     private fun pasteImage(item: ClipboardItem) {
         val uri = item.imageUri ?: return
         val ic = currentInputConnection ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             try {
                 val desc = android.content.ClipDescription("image", arrayOf(item.mimeType))
-                val contentInfo = InputContentInfo(uri, desc, null)
-                ic.commitContent(contentInfo, InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
-            } catch (_: Exception) {
-                item.text?.let { ic.commitText(it, 1) }
-            }
+                val info = InputContentInfo(uri, desc, null)
+                ic.commitContent(info, InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
+            } catch (_: Exception) { item.text?.let { ic.commitText(it, 1) } }
         } else {
             item.text?.let { ic.commitText(it, 1) }
         }
+    }
+
+    private fun shouldAutoCapitalize(autoCapEnabled: Boolean): Boolean {
+        if (!autoCapEnabled || isPasswordField) return false
+        val ic = currentInputConnection ?: return false
+        val before = ic.getTextBeforeCursor(2, 0)?.toString() ?: return true
+        if (before.isEmpty()) return true
+        val trimmed = before.trimEnd()
+        if (trimmed.isEmpty()) return before.isNotEmpty() // start of field after spaces
+        return trimmed.last() in listOf('.', '!', '?', '\n')
     }
 
     override fun onCreateInputView(): View {
@@ -130,13 +180,17 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
             val alignment by preferencesManager.keyboardAlignment.collectAsState(initial = 1)
             val layoutName by preferencesManager.selectedLayout.collectAsState(initial = "QWERTY")
             val hapticEnabled by preferencesManager.hapticEnabled.collectAsState(initial = true)
+            val soundEnabled by preferencesManager.soundEnabled.collectAsState(initial = false)
             val suggestionCount by preferencesManager.suggestionCount.collectAsState(initial = 3)
             val predictionsEnabled by preferencesManager.predictionsEnabled.collectAsState(initial = true)
             val bottomPadding by preferencesManager.bottomPadding.collectAsState(initial = 0)
             val clipboardEnabled by preferencesManager.clipboardEnabled.collectAsState(initial = false)
             val followSystemTheme by preferencesManager.followSystemTheme.collectAsState(initial = false)
+            val numberRowEnabled by preferencesManager.numberRowEnabled.collectAsState(initial = false)
+            val autoCapitalize by preferencesManager.autoCapitalize.collectAsState(initial = true)
+            val spacebarCursor by preferencesManager.spacebarCursor.collectAsState(initial = true)
+            val largeKeys by preferencesManager.largeKeys.collectAsState(initial = false)
 
-            // Init clipboard only if enabled (#11)
             LaunchedEffect(clipboardEnabled) {
                 if (clipboardEnabled && clipboardHistory == null) {
                     clipboardHistory = ClipboardHistory(this@HandBoardService)
@@ -151,9 +205,9 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
             LaunchedEffect(layoutName) { layoutSwitcher.setLayout(layoutName) }
 
             val suggestions = remember { mutableStateListOf<String>() }
-
-            // Determine if predictions should show
             val showPredictions = predictionsEnabled && !isPasswordField && !isNumberField
+
+            val effectiveHeightScale = if (largeKeys) heightScale * 1.25f else heightScale
 
             fun updateSuggestions() {
                 suggestions.clear()
@@ -163,7 +217,16 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
             }
 
             fun commitText(text: String) {
-                currentInputConnection?.commitText(text, 1)
+                val ic = currentInputConnection ?: return
+
+                // Auto-capitalize
+                val finalText = if (text.length == 1 && text[0].isLetter() &&
+                    shouldAutoCapitalize(autoCapitalize)) {
+                    text.uppercase()
+                } else text
+
+                ic.commitText(finalText, 1)
+
                 if (text == " ") {
                     val word = getCurrentWord()
                     if (word.isNotEmpty()) wordPredictor.onWordCommitted(word)
@@ -181,7 +244,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 updateSuggestions()
             }
 
-            // Theme: follow system or force dark (#15)
             val useDark = if (followSystemTheme) isSystemInDarkTheme() else true
 
             HandBoardTheme(darkTheme = useDark) {
@@ -192,8 +254,12 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                     KeyboardView(
                         layoutSwitcher = layoutSwitcher,
                         preferencesManager = preferencesManager,
-                        heightScale = heightScale,
+                        heightScale = effectiveHeightScale,
                         hapticEnabled = hapticEnabled,
+                        soundEnabled = soundEnabled,
+                        numberRowEnabled = numberRowEnabled,
+                        spacebarCursor = spacebarCursor,
+                        clipboardEnabled = clipboardEnabled,
                         clipboardHistory = if (clipboardEnabled) clipboardHistory else null,
                         suggestionBar = if (showPredictions) {
                             {
@@ -211,12 +277,21 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                         onEnter = {
                             val word = getCurrentWord()
                             if (word.isNotEmpty()) wordPredictor.onWordCommitted(word)
-                            sendDownUpKeyEvents(android.view.KeyEvent.KEYCODE_ENTER)
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
                             suggestions.clear()
                         },
                         onEmojiInput = { emoji ->
                             currentInputConnection?.commitText(emoji, 1)
                         },
+                        onCursorMove = { dir -> moveCursor(dir) },
+                        onCursorHome = { moveCursorHome() },
+                        onCursorEnd = { moveCursorEnd() },
+                        onSelectAll = { selectAll() },
+                        onCopy = { copyText() },
+                        onCut = { cutText() },
+                        onPaste = { pasteText() },
+                        onUndo = { undoAction() },
+                        onRedo = { redoAction() },
                         onPasteImage = { pasteImage(it) }
                     )
 
@@ -229,7 +304,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
     }
 
     override fun onDestroy() {
-        // Cleanup clipboard listener (#9)
         clipboardHistory?.destroy()
         clipboardHistory = null
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)

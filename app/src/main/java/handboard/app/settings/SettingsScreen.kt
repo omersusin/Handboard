@@ -51,11 +51,17 @@ fun SettingsScreen(
     val alignment by preferencesManager.keyboardAlignment.collectAsState(initial = 1)
     val layoutName by preferencesManager.selectedLayout.collectAsState(initial = "QWERTY")
     val haptic by preferencesManager.hapticEnabled.collectAsState(initial = true)
+    val sound by preferencesManager.soundEnabled.collectAsState(initial = false)
     val suggestionCount by preferencesManager.suggestionCount.collectAsState(initial = 3)
     val predictionsEnabled by preferencesManager.predictionsEnabled.collectAsState(initial = true)
     val bottomPadding by preferencesManager.bottomPadding.collectAsState(initial = 0)
     val clipboardEnabled by preferencesManager.clipboardEnabled.collectAsState(initial = false)
     val followSystemTheme by preferencesManager.followSystemTheme.collectAsState(initial = false)
+    val numberRow by preferencesManager.numberRowEnabled.collectAsState(initial = false)
+    val autoCap by preferencesManager.autoCapitalize.collectAsState(initial = true)
+    val spacebarCursor by preferencesManager.spacebarCursor.collectAsState(initial = true)
+    val highContrast by preferencesManager.highContrast.collectAsState(initial = false)
+    val largeKeys by preferencesManager.largeKeys.collectAsState(initial = false)
 
     Scaffold(
         topBar = {
@@ -78,19 +84,13 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Layout
-            SectionCard(title = stringResource(R.string.section_layout)) {
+            Sec(stringResource(R.string.section_layout)) {
                 LayoutRegistry.getAllNames().forEach { name ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }
-                            .padding(vertical = 8.dp),
+                        Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(
-                            selected = name == layoutName,
-                            onClick = { scope.launch { preferencesManager.setSelectedLayout(name) } }
-                        )
+                        RadioButton(selected = name == layoutName, onClick = { scope.launch { preferencesManager.setSelectedLayout(name) } })
                         Spacer(Modifier.width(8.dp))
                         Text(name, style = MaterialTheme.typography.bodyLarge)
                     }
@@ -98,95 +98,81 @@ fun SettingsScreen(
             }
 
             // Size
-            SectionCard(title = stringResource(R.string.section_size)) {
-                Text(stringResource(R.string.height_label, heightScale), style = MaterialTheme.typography.bodyMedium)
-                Slider(
-                    value = heightScale,
-                    onValueChange = { scope.launch { preferencesManager.setKeyboardHeight(it) } },
-                    valueRange = 0.7f..1.5f, steps = 7
-                )
+            Sec(stringResource(R.string.section_size)) {
+                Text(stringResource(R.string.height_label, heightScale)); Slider(value = heightScale, onValueChange = { scope.launch { preferencesManager.setKeyboardHeight(it) } }, valueRange = 0.7f..1.5f, steps = 7)
                 Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.width_label, widthPercent), style = MaterialTheme.typography.bodyMedium)
-                Slider(
-                    value = widthPercent.toFloat(),
-                    onValueChange = { scope.launch { preferencesManager.setKeyboardWidth(it.toInt()) } },
-                    valueRange = 50f..100f, steps = 9
-                )
+                Text(stringResource(R.string.width_label, widthPercent)); Slider(value = widthPercent.toFloat(), onValueChange = { scope.launch { preferencesManager.setKeyboardWidth(it.toInt()) } }, valueRange = 50f..100f, steps = 9)
             }
 
             // Position
-            SectionCard(title = stringResource(R.string.section_position)) {
-                val options = listOf(
-                    stringResource(R.string.position_left),
-                    stringResource(R.string.position_center),
-                    stringResource(R.string.position_right)
-                )
+            Sec(stringResource(R.string.section_position)) {
+                val opts = listOf(stringResource(R.string.position_left), stringResource(R.string.position_center), stringResource(R.string.position_right))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    options.forEachIndexed { index, label ->
-                        FilterChip(
-                            selected = index == alignment,
-                            onClick = { scope.launch { preferencesManager.setKeyboardAlignment(index) } },
-                            label = { Text(label) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    opts.forEachIndexed { i, l -> FilterChip(selected = i == alignment, onClick = { scope.launch { preferencesManager.setKeyboardAlignment(i) } }, label = { Text(l) }, modifier = Modifier.weight(1f)) }
                 }
             }
 
             // Bottom Padding
-            SectionCard(title = stringResource(R.string.section_padding)) {
-                Text(stringResource(R.string.padding_label, bottomPadding), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.padding_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Slider(
-                    value = bottomPadding.toFloat(),
-                    onValueChange = { scope.launch { preferencesManager.setBottomPadding(it.roundToInt()) } },
-                    valueRange = 0f..60f, steps = 11
-                )
+            Sec(stringResource(R.string.section_padding)) {
+                Text(stringResource(R.string.padding_label, bottomPadding)); Sub(stringResource(R.string.padding_desc))
+                Slider(value = bottomPadding.toFloat(), onValueChange = { scope.launch { preferencesManager.setBottomPadding(it.roundToInt()) } }, valueRange = 0f..60f, steps = 11)
+            }
+
+            // Typing
+            Sec(stringResource(R.string.section_typing)) {
+                Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }
+                Sub(stringResource(R.string.number_row_desc))
+                Spacer(Modifier.height(8.dp))
+                Toggle(stringResource(R.string.auto_capitalize_toggle), autoCap) { scope.launch { preferencesManager.setAutoCapitalize(it) } }
+                Sub(stringResource(R.string.auto_capitalize_desc))
+                Spacer(Modifier.height(8.dp))
+                Toggle(stringResource(R.string.spacebar_cursor_toggle), spacebarCursor) { scope.launch { preferencesManager.setSpacebarCursor(it) } }
+                Sub(stringResource(R.string.spacebar_cursor_desc))
             }
 
             // Theme
-            SectionCard(title = stringResource(R.string.section_theme)) {
-                SettingRow(stringResource(R.string.theme_follow_system), followSystemTheme) {
-                    scope.launch { preferencesManager.setFollowSystemTheme(it) }
-                }
-                Text(stringResource(R.string.theme_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Sec(stringResource(R.string.section_theme)) {
+                Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }
+                Sub(stringResource(R.string.theme_desc))
             }
 
             // Predictions
-            SectionCard(title = stringResource(R.string.section_predictions)) {
-                SettingRow(stringResource(R.string.predictions_toggle), predictionsEnabled) {
-                    scope.launch { preferencesManager.setPredictionsEnabled(it) }
-                }
+            Sec(stringResource(R.string.section_predictions)) {
+                Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
                 if (predictionsEnabled) {
                     Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.suggestions_label, suggestionCount), style = MaterialTheme.typography.bodyMedium)
-                    Slider(
-                        value = suggestionCount.toFloat(),
-                        onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } },
-                        valueRange = 1f..5f, steps = 3
-                    )
+                    Text(stringResource(R.string.suggestions_label, suggestionCount))
+                    Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3)
                 }
             }
 
             // Clipboard
-            SectionCard(title = stringResource(R.string.section_clipboard)) {
-                SettingRow(stringResource(R.string.clipboard_toggle), clipboardEnabled) {
-                    scope.launch { preferencesManager.setClipboardEnabled(it) }
-                }
-                Text(stringResource(R.string.clipboard_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Sec(stringResource(R.string.section_clipboard)) {
+                Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }
+                Sub(stringResource(R.string.clipboard_desc))
             }
 
             // Feedback
-            SectionCard(title = stringResource(R.string.section_feedback)) {
-                SettingRow(stringResource(R.string.haptic_toggle), haptic) {
-                    scope.launch { preferencesManager.setHapticEnabled(it) }
-                }
+            Sec(stringResource(R.string.section_feedback)) {
+                Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }
+                Spacer(Modifier.height(8.dp))
+                Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }
+                Sub(stringResource(R.string.sound_desc))
+            }
+
+            // Accessibility
+            Sec(stringResource(R.string.section_accessibility)) {
+                Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }
+                Sub(stringResource(R.string.high_contrast_desc))
+                Spacer(Modifier.height(8.dp))
+                Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }
+                Sub(stringResource(R.string.large_keys_desc))
             }
 
             // About
-            SectionCard(title = stringResource(R.string.section_about)) {
+            Sec(stringResource(R.string.section_about)) {
                 Text(stringResource(R.string.about_version), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.about_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Sub(stringResource(R.string.about_desc))
             }
 
             Spacer(Modifier.height(32.dp))
@@ -194,28 +180,21 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun SettingRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+@Composable private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge); Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 
-@Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+@Composable private fun Sub(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable private fun Sec(title: String, content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(12.dp))
-            content()
+            Spacer(Modifier.height(12.dp)); content()
         }
     }
 }

@@ -93,7 +93,7 @@ fun SettingsScreen(
             
             // Dictionary
             Sec("Dictionary") {
-                availableDicts.forEach { dict ->
+                for (dict in availableDicts) {
                     Row(
                         Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setDictionaryId(dict.id) } }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -104,7 +104,8 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Sub("Active: ${availableDicts.find { it.id == dictId }?.name ?: "Built-in"} (${predictor.getDictionarySize()} words)")
+                val activeDict = availableDicts.find { it.id == dictId }
+                Sub("Active: ${(activeDict?.name ?: "Built-in")} (${predictor.getDictionarySize()} words)")
             }
 
             // Predictions
@@ -131,7 +132,7 @@ fun SettingsScreen(
 
             // Layout
             Sec(stringResource(R.string.section_layout)) {
-                LayoutRegistry.getAllNames().forEach { name ->
+                for (name in LayoutRegistry.getAllNames()) {
                     Row(
                         Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically

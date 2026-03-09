@@ -15,7 +15,9 @@ class WordPredictor {
         dictManager = DictionaryManager(context)
         personalDict = PersonalDictionary(context)
 
-        val dict = dictManager?.getAvailable()?.find { it.id == dictId }
+        val dictList = dictManager?.getAvailable() ?: emptyList()
+        val dict = dictList.find { it.id == dictId }
+        
         if (dict != null) dictManager?.loadIntoTrie(dict, trie)
         dictManager?.loadBigrams(dictId, bigramMap)
 
@@ -24,22 +26,24 @@ class WordPredictor {
     }
 
     fun reloadDictionary(context: Context, dictId: String) {
-        val dict = dictManager?.getAvailable()?.find { it.id == dictId } ?: return
-        dictManager?.loadIntoTrie(dict, trie) 
+        val dictList = dictManager?.getAvailable() ?: emptyList()
+        val dict = dictList.find { it.id == dictId } ?: return
+        dictManager?.loadIntoTrie(dict, trie)
         dictManager?.loadBigrams(dictId, bigramMap)
     }
 
-    fun predict(input: String, maxSuggestions: Int = 3): List<String> {
+    fun predict(input: String, maxSuggestions: Int = 3, autocorrect: Boolean = true): List<String> {
         if (input.isBlank()) return predictNextWord(maxSuggestions)
         val prefix = input.lowercase().trim()
         if (prefix.isEmpty()) return emptyList()
 
         val results = mutableListOf<String>()
-        results.addAll(trie.wordsWithPrefix(prefix, maxSuggestions + 3).filter { it.first != prefix }.map { it.first })
+        val prefixResults = trie.wordsWithPrefix(prefix, maxSuggestions + 3).filter { it.first != prefix }.map { it.first }
+        results.addAll(prefixResults)
 
-        if (results.size < maxSuggestions && prefix.length >= 3) {
-            val fuzzy = trie.fuzzySearch(prefix, maxSuggestions - results.size).map { it.first }.filter { it !in results }
-            results.addAll(fuzzy)
+        if (autocorrect && results.size < maxSuggestions && prefix.length >= 3) {
+            val fuzzyResults = trie.fuzzySearch(prefix, maxSuggestions - results.size).map { it.first }.filter { it !in results }
+            results.addAll(fuzzyResults)
         }
 
         if (trie.search(prefix) && results.isEmpty()) return predictNextWord(maxSuggestions, prefix)
@@ -49,7 +53,8 @@ class WordPredictor {
     private fun predictNextWord(limit: Int, overrideLastWord: String? = null): List<String> {
         val word = overrideLastWord ?: lastWord
         if (word.isEmpty()) return emptyList()
-        return bigramMap[word.lowercase()]?.entries?.sortedByDescending { it.value }?.take(limit)?.map { it.key } ?: emptyList()
+        val bigrams = bigramMap[word.lowercase()] ?: return emptyList()
+        return bigrams.entries.sortedByDescending { it.value }.take(limit).map { it.key }
     }
 
     fun onWordCommitted(word: String) {
@@ -59,7 +64,8 @@ class WordPredictor {
         trie.updateFrequency(lower, 5)
         
         if (lastWord.isNotEmpty()) {
-            bigramMap.getOrPut(lastWord) { HashMap() }.merge(lower, 1) { old, _ -> old + 1 }
+            val count = bigramMap.getOrPut(lastWord) { HashMap() }[lower] ?: 0
+            bigramMap[lastWord]!![lower] = count + 1
         }
         lastWord = lower
     }

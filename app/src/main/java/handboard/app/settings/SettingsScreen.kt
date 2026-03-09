@@ -51,8 +51,6 @@ import handboard.app.prediction.WordPredictor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +85,7 @@ fun SettingsScreen(
 
     var dictManager by remember { mutableStateOf(DictionaryManager(context)) }
     var loadedWordCount by remember { mutableStateOf(0) }
+    var isImporting by remember { mutableStateOf(false) }
     val predictor = remember { WordPredictor() }
     
     LaunchedEffect(activeDicts, multilingualEnabled, dictId, dictManager) {
@@ -99,19 +98,16 @@ fun SettingsScreen(
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val dictDir = File(context.filesDir, "dictionaries")
-                    if (!dictDir.exists()) dictDir.mkdirs()
-                    val destFile = File(dictDir, "custom_${System.currentTimeMillis()}.txt")
-                    context.contentResolver.openInputStream(uri)?.use { input -> destFile.outputStream().use { output -> input.copyTo(output) } }
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Dictionary imported!", Toast.LENGTH_SHORT).show()
-                        dictManager = DictionaryManager(context) 
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) { Toast.makeText(context, "Import failed.", Toast.LENGTH_SHORT).show() }
+            isImporting = true
+            scope.launch {
+                val success = dictManager.importAndConvertFile(uri)
+                if (success) {
+                    Toast.makeText(context, "Dictionary converted and imported successfully!", Toast.LENGTH_LONG).show()
+                    dictManager = DictionaryManager(context) 
+                } else {
+                    Toast.makeText(context, "Failed to read or convert dictionary.", Toast.LENGTH_LONG).show()
                 }
+                isImporting = false
             }
         }
     }
@@ -146,7 +142,7 @@ fun SettingsScreen(
                         if (multilingualEnabled) {
                             Checkbox(checked = activeDicts.contains(dict.id), onCheckedChange = null)
                         } else {
-                            RadioButton(selected = dict.id == dict.id, onClick = null)
+                            RadioButton(selected = dict.id == dictId, onClick = null)
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(dict.name, style = MaterialTheme.typography.bodyLarge)
@@ -156,38 +152,30 @@ fun SettingsScreen(
                 Sub("Engine currently loaded with $loadedWordCount valid words.")
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { filePicker.launch("*/*") }, modifier = Modifier.weight(1f)) { Text("Import .txt") }
+                    Button(onClick = { filePicker.launch("*/*") }, modifier = Modifier.weight(1f), enabled = !isImporting) { 
+                        Text(if (isImporting) "Converting..." else "Import File") 
+                    }
                     Button(onClick = { 
                         dictManager.deleteCustomDictionaries()
                         dictManager = DictionaryManager(context)
                         Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show()
                     }, modifier = Modifier.weight(1f)) { Text("Delete Imports") }
                 }
-                Sub("Please import plain text files (e.g. word lists). Binary .dict files are rejected automatically to prevent corruption.")
+                Sub("Select a .txt or AOSP .dict file. The app will automatically extract and convert binary files.")
             }
 
             // Predictions
-            Sec(stringResource(R.string.section_predictions)) {
-                Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }
-                if (predictionsEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Toggle("Auto-Correct", autocorrectEnabled) { scope.launch { preferencesManager.setAutocorrectEnabled(it) } }
-                    Spacer(Modifier.height(16.dp))
-                    Text(stringResource(R.string.suggestions_label, suggestionCount))
-                    Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3)
-                }
-            }
-
-            // Layout, Size, Position, etc.
+            Sec(stringResource(R.string.section_predictions)) { Toggle(stringResource(R.string.predictions_toggle), predictionsEnabled) { scope.launch { preferencesManager.setPredictionsEnabled(it) } }; if (predictionsEnabled) { Spacer(Modifier.height(8.dp)); Toggle("Auto-Correct", autocorrectEnabled) { scope.launch { preferencesManager.setAutocorrectEnabled(it) } }; Spacer(Modifier.height(16.dp)); Text(stringResource(R.string.suggestions_label, suggestionCount)); Slider(value = suggestionCount.toFloat(), onValueChange = { scope.launch { preferencesManager.setSuggestionCount(it.toInt()) } }, valueRange = 1f..5f, steps = 3) } }
+            Sec("Personal Dictionary") { Text("${predictor.getPersonalWords().size} learned words", style = MaterialTheme.typography.bodyLarge); Spacer(Modifier.height(8.dp)); Button(onClick = { predictor.clearPersonalDictionary() }) { Text("Clear Personal Dictionary") } }
             Sec(stringResource(R.string.section_layout)) { LayoutRegistry.getAllNames().forEach { name -> Row(Modifier.fillMaxWidth().clickable { scope.launch { preferencesManager.setSelectedLayout(name) } }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = name == layoutName, onClick = null); Spacer(Modifier.width(8.dp)); Text(name, style = MaterialTheme.typography.bodyLarge) } } }
             Sec(stringResource(R.string.section_size)) { Text(stringResource(R.string.height_label, heightScale)); Slider(value = heightScale, onValueChange = { scope.launch { preferencesManager.setKeyboardHeight(it) } }, valueRange = 0.7f..1.5f, steps = 7); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.width_label, widthPercent)); Slider(value = widthPercent.toFloat(), onValueChange = { scope.launch { preferencesManager.setKeyboardWidth(it.toInt()) } }, valueRange = 50f..100f, steps = 9) }
             Sec(stringResource(R.string.section_position)) { val opts = listOf(stringResource(R.string.position_left), stringResource(R.string.position_center), stringResource(R.string.position_right)); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { opts.forEachIndexed { i, l -> FilterChip(selected = i == alignment, onClick = { scope.launch { preferencesManager.setKeyboardAlignment(i) } }, label = { Text(l) }, modifier = Modifier.weight(1f)) } } }
             Sec(stringResource(R.string.section_padding)) { Text(stringResource(R.string.padding_label, bottomPadding)); Sub(stringResource(R.string.padding_desc)); Slider(value = bottomPadding.toFloat(), onValueChange = { scope.launch { preferencesManager.setBottomPadding(it.roundToInt()) } }, valueRange = 0f..60f, steps = 11) }
-            Sec(stringResource(R.string.section_typing)) { Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.auto_capitalize_toggle), autoCap) { scope.launch { preferencesManager.setAutoCapitalize(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.spacebar_cursor_toggle), spacebarCursor) { scope.launch { preferencesManager.setSpacebarCursor(it) } } }
+            Sec(stringResource(R.string.section_typing)) { Toggle(stringResource(R.string.number_row_toggle), numberRow) { scope.launch { preferencesManager.setNumberRowEnabled(it) } }; Sub(stringResource(R.string.number_row_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.auto_capitalize_toggle), autoCap) { scope.launch { preferencesManager.setAutoCapitalize(it) } }; Sub(stringResource(R.string.auto_capitalize_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.spacebar_cursor_toggle), spacebarCursor) { scope.launch { preferencesManager.setSpacebarCursor(it) } }; Sub(stringResource(R.string.spacebar_cursor_desc)) }
             Sec(stringResource(R.string.section_theme)) { Toggle(stringResource(R.string.theme_follow_system), followSystemTheme) { scope.launch { preferencesManager.setFollowSystemTheme(it) } }; Sub(stringResource(R.string.theme_desc)) }
             Sec(stringResource(R.string.section_clipboard)) { Toggle(stringResource(R.string.clipboard_toggle), clipboardEnabled) { scope.launch { preferencesManager.setClipboardEnabled(it) } }; Sub(stringResource(R.string.clipboard_desc)) }
-            Sec(stringResource(R.string.section_feedback)) { Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } } }
-            Sec(stringResource(R.string.section_accessibility)) { Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } } }
+            Sec(stringResource(R.string.section_feedback)) { Toggle(stringResource(R.string.haptic_toggle), haptic) { scope.launch { preferencesManager.setHapticEnabled(it) } }; Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.sound_toggle), sound) { scope.launch { preferencesManager.setSoundEnabled(it) } }; Sub(stringResource(R.string.sound_desc)) }
+            Sec(stringResource(R.string.section_accessibility)) { Toggle(stringResource(R.string.high_contrast_toggle), highContrast) { scope.launch { preferencesManager.setHighContrast(it) } }; Sub(stringResource(R.string.high_contrast_desc)); Spacer(Modifier.height(8.dp)); Toggle(stringResource(R.string.large_keys_toggle), largeKeys) { scope.launch { preferencesManager.setLargeKeys(it) } }; Sub(stringResource(R.string.large_keys_desc)) }
             Spacer(Modifier.height(32.dp))
         }
     }

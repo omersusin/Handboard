@@ -1,6 +1,9 @@
 package handboard.app.prediction
 
 import android.content.Context
+import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -9,7 +12,6 @@ data class DictionaryInfo(val id: String, val name: String, val isAsset: Boolean
 
 class DictionaryManager(private val context: Context) {
     
-    // Yalnızca Evrensel Harfleri kabul eden güvenlik filtresi
     private val validWordRegex = Regex("^[\\p{L}]+$")
 
     fun getAvailable(): List<DictionaryInfo> {
@@ -25,8 +27,8 @@ class DictionaryManager(private val context: Context) {
 
         val dictDir = File(context.filesDir, "dictionaries")
         if (dictDir.exists()) {
-            dictDir.listFiles()?.filter { it.extension == "txt" || it.extension == "dict" }?.forEach { f ->
-                list.add(DictionaryInfo("ext_${f.nameWithoutExtension}", "Custom: ${f.nameWithoutExtension}", false, f))
+            dictDir.listFiles()?.filter { it.extension == "txt" }?.forEach { f ->
+                list.add(DictionaryInfo("ext_${f.nameWithoutExtension}", "Custom: ${f.nameWithoutExtension.takeLast(6)}", false, f))
             }
         }
         return list
@@ -46,9 +48,7 @@ class DictionaryManager(private val context: Context) {
                     if (trimmed.isNotEmpty()) {
                         val parts = trimmed.split(Regex("\\s+"), limit = 2)
                         val word = parts[0].lowercase()
-                        
-                        // GÜVENLİK: Eğer kelime içinde bozuk karakter (, sayı, sembol) varsa yoksay!
-                        if (word.length in 1..30 && word.matches(validWordRegex)) {
+                        if (word.length in 2..30 && word.matches(validWordRegex)) {
                             val freq = if (parts.size > 1) parts[1].toIntOrNull() ?: 500 else 500
                             trie.insert(word, freq)
                         }
@@ -74,6 +74,46 @@ class DictionaryManager(private val context: Context) {
                 }
             }
         } catch (_: Exception) {}
+    }
+
+    /**
+     * Akıllı İçe Aktarma ve Dönüştürücü (Converter)
+     * Binary (.dict) dosyalarını tarar ve sadece içindeki geçerli kelimeleri ayıklar.
+     */
+    suspend fun importAndConvertFile(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val bytes = context.contentResolver.openInputStream(uri)?.readBytes() ?: return@withContext false
+            val dictDir = File(context.filesDir, "dictionaries").apply { mkdirs() }
+            val destFile = File(dictDir, "custom_${System.currentTimeMillis()}.txt")
+
+            // Dosya binary mi kontrol et (içinde null byte var mı?)
+            val isBinary = bytes.contains(0.toByte())
+
+            if (isBinary) {
+                // Sıkıştırılmış AOSP formatı -> Scavenger Converter
+                val text = String(bytes, Charsets.ISO_8859_1) // Binary bozmadan oku
+                // Sadece yan yana gelmiş 2 ila 30 harflik karakter dizilerini avla
+                val extractionRegex = Regex("[\\p{L}]{2,30}")
+                val words = extractionRegex.findAll(text)
+                    .map { it.value.lowercase() }
+                    .filter { it.matches(validWordRegex) } // Güvenlik kontrolü
+                    .toSet()
+
+                if (words.isEmpty()) return@withContext false
+
+                destFile.printWriter().use { out ->
+                    words.forEach { word ->
+                        out.println("$word\t500") // Standart frekans ile kaydet
+                    }
+                }
+            } else {
+                // Zaten metin dosyası, direkt kopyala
+                destFile.writeBytes(bytes)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun deleteCustomDictionaries() {

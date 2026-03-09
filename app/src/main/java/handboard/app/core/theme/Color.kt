@@ -1,27 +1,14 @@
 package handboard.app.core.theme
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
-// Material You purple (Android <12 fallback)
-val Purple10 = Color(0xFF21005D)
+// Default Fallback Colors
+val Purple80 = Color(0xFFD0BCFF)
 val Purple20 = Color(0xFF381E72)
 val Purple30 = Color(0xFF4F378B)
-val Purple40 = Color(0xFF6750A4)
-val Purple80 = Color(0xFFD0BCFF)
 val Purple90 = Color(0xFFEADDFF)
-val Purple99 = Color(0xFFFFFBFE)
-
-val PurpleGrey30 = Color(0xFF332D41)
-val PurpleGrey50 = Color(0xFF605D66)
-val PurpleGrey80 = Color(0xFFC9C5D0)
-val PurpleGrey90 = Color(0xFFE6E0EC)
-
-val Error30 = Color(0xFF93000A)
-val Error40 = Color(0xFFBA1A1A)
 val Error80 = Color(0xFFFFB4AB)
-val Error90 = Color(0xFFFFDAD6)
+val Error30 = Color(0xFF93000A)
 
 data class KeyboardColors(
     val background: Color,
@@ -30,11 +17,7 @@ data class KeyboardColors(
     val shiftActive: Color,
     val keyText: Color,
     val keyTextDim: Color,
-    val numberRow: Color,
-    val suggestionBg: Color,
-    val suggestionActiveBg: Color,
-    val panelItemBg: Color,
-    val divider: Color
+    val numberRow: Color
 )
 
 val DarkKeyboardColors = KeyboardColors(
@@ -44,11 +27,17 @@ val DarkKeyboardColors = KeyboardColors(
     shiftActive = Color(0xFF6750A4),
     keyText = Color(0xFFFFFFFF),
     keyTextDim = Color(0xFF9E9EA6),
-    numberRow = Color(0xFF232328),
-    suggestionBg = Color(0xFF2D2D32),
-    suggestionActiveBg = Color(0xFF3C3C42),
-    panelItemBg = Color(0xFF2D2D32),
-    divider = Color(0xFF3C3C42)
+    numberRow = Color(0xFF232328)
+)
+
+val AmoledKeyboardColors = KeyboardColors(
+    background = Color(0xFF000000),
+    keyBackground = Color(0xFF121212),
+    actionKeyBackground = Color(0xFF222222),
+    shiftActive = Color(0xFF0055FF),
+    keyText = Color(0xFFFFFFFF),
+    keyTextDim = Color(0xFF888888),
+    numberRow = Color(0xFF0A0A0A)
 )
 
 val LightKeyboardColors = KeyboardColors(
@@ -58,14 +47,10 @@ val LightKeyboardColors = KeyboardColors(
     shiftActive = Color(0xFF6750A4),
     keyText = Color(0xFF1B1B1F),
     keyTextDim = Color(0xFF6B6B75),
-    numberRow = Color(0xFFDDDDE4),
-    suggestionBg = Color(0xFFFFFFFF),
-    suggestionActiveBg = Color(0xFFD4D4DC),
-    panelItemBg = Color(0xFFFFFFFF),
-    divider = Color(0xFFD4D4DC)
+    numberRow = Color(0xFFDDDDE4)
 )
 
-// Legacy aliases — will be replaced by themed access
+// Legacy Aliases 
 var KeyboardBackground = DarkKeyboardColors.background; private set
 var KeyBackground = DarkKeyboardColors.keyBackground; private set
 var ActionKeyBackground = DarkKeyboardColors.actionKeyBackground; private set
@@ -74,13 +59,25 @@ var KeyText = DarkKeyboardColors.keyText; private set
 var KeyTextDim = DarkKeyboardColors.keyTextDim; private set
 var NumberRowBackground = DarkKeyboardColors.numberRow; private set
 
-fun applyKeyboardColors(isDark: Boolean) {
-    val c = if (isDark) DarkKeyboardColors else LightKeyboardColors
-    KeyboardBackground = c.background
-    KeyBackground = c.keyBackground
-    ActionKeyBackground = c.actionKeyBackground
-    ShiftActiveBackground = c.shiftActive
-    KeyText = c.keyText
-    KeyTextDim = c.keyTextDim
-    NumberRowBackground = c.numberRow
+fun applyKeyboardTheme(themePref: String, isSystemDark: Boolean, dynamicPrimary: Color?) {
+    val isDark = when (themePref) {
+        "light" -> false
+        "dark", "amoled" -> true
+        else -> isSystemDark
+    }
+
+    val base = when (themePref) {
+        "amoled" -> AmoledKeyboardColors
+        "light" -> LightKeyboardColors
+        else -> if (isSystemDark) DarkKeyboardColors else LightKeyboardColors
+    }
+
+    KeyboardBackground = base.background
+    KeyBackground = base.keyBackground
+    ActionKeyBackground = base.actionKeyBackground
+    // If Material You is active (dynamicPrimary exists), use it for shift/active keys
+    ShiftActiveBackground = dynamicPrimary ?: base.shiftActive 
+    KeyText = base.keyText
+    KeyTextDim = base.keyTextDim
+    NumberRowBackground = base.numberRow
 }

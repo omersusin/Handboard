@@ -68,7 +68,6 @@ fun KeyboardView(
     var currentPanel by remember { mutableStateOf(KeyboardPanel.KEYBOARD) }
     val scope = rememberCoroutineScope()
     
-    // Search specific states
     var searchQuery by remember { mutableStateOf("") }
     val searchEngine = remember(clipboardHistory) { SearchEngine(clipboardHistory) }
     val searchResults = remember { mutableStateListOf<SearchResult>() }
@@ -93,7 +92,7 @@ fun KeyboardView(
         
         if (currentPanel == KeyboardPanel.KEYBOARD) suggestionBar?.invoke()
 
-        if (currentPanel != KeyboardPanel.SEARCH) {
+        if (currentPanel != KeyboardPanel.SEARCH && currentPanel != KeyboardPanel.TRANSLATE) {
             LayoutToolbar(
                 currentLayoutName = layoutSwitcher.currentLayoutName, currentPanel = currentPanel, clipboardEnabled = clipboardEnabled,
                 onSwitchLayout = {
@@ -102,13 +101,18 @@ fun KeyboardView(
                     currentPanel = KeyboardPanel.KEYBOARD
                     scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
                 },
-                onSwitchPanel = { currentPanel = it; if (it == KeyboardPanel.SEARCH) searchQuery = "" }
+                onSwitchPanel = { currentPanel = it; searchQuery = "" }
             )
-        } else {
+        } else if (currentPanel == KeyboardPanel.SEARCH) {
             SearchPanel(
                 query = searchQuery, results = searchResults, heightScale = heightScale,
                 onResultClick = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; searchQuery = "" },
                 onClose = { currentPanel = KeyboardPanel.KEYBOARD; searchQuery = "" }
+            )
+        } else if (currentPanel == KeyboardPanel.TRANSLATE) {
+            TranslatePanel(
+                onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD },
+                onClose = { currentPanel = KeyboardPanel.KEYBOARD }
             )
         }
 

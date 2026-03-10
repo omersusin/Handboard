@@ -36,7 +36,6 @@ class ClipboardHistory(private val context: Context) {
         clipboardManager = null
     }
 
-    // ARTIK PUBLIC
     fun readCurrentClip() {
         try {
             val clip = clipboardManager?.primaryClip ?: return

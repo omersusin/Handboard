@@ -106,7 +106,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 val sc2 by prefs.spacebarCursor.collectAsState(initial = true)
                 val lk by prefs.largeKeys.collectAsState(initial = false)
                 
-                // Panel Toggles
                 val clipboardEnabled by prefs.clipboardEnabled.collectAsState(initial = true)
                 val searchEnabled by prefs.searchEnabled.collectAsState(initial = true)
                 val currencyEnabled by prefs.currencyEnabled.collectAsState(initial = true)
@@ -149,9 +148,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                                 if (text == " ") {
                                     val now = System.currentTimeMillis()
                                     if (now - lastSpaceTime < 400 && !isPasswordField) {
-                                        ic.deleteSurroundingText(1, 0)
-                                        ic.commitText(". ", 1)
-                                        lastSpaceTime = 0L; updateSuggestions(); return@KeyboardView
+                                        ic.deleteSurroundingText(1, 0); ic.commitText(". ", 1); lastSpaceTime = 0L; updateSuggestions(); return@KeyboardView
                                     }
                                     lastSpaceTime = now
                                 } else lastSpaceTime = 0L
@@ -161,7 +158,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                                     if (b.isEmpty() || b.trimEnd().lastOrNull() in listOf('.', '!', '?', '\n')) text.uppercase() else text
                                 } else text
                                 ic.commitText(final, 1)
-
                                 if (text == " ") { val w = getCurrentWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w) }
                                 updateSuggestions()
                             }
@@ -173,11 +169,13 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                         onCursorHome = { sendKey(KeyEvent.KEYCODE_MOVE_HOME) }, onCursorEnd = { sendKey(KeyEvent.KEYCODE_MOVE_END) },
                         onSelectAll = { currentInputConnection?.performContextMenuAction(android.R.id.selectAll) }, onCopy = { currentInputConnection?.performContextMenuAction(android.R.id.copy) }, onCut = { currentInputConnection?.performContextMenuAction(android.R.id.cut) }, onPaste = { currentInputConnection?.performContextMenuAction(android.R.id.paste) },
                         onUndo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) }, onRedo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) },
-                        onPasteImage = { pasteImage(it) }
+                        onPasteImage = { pasteImage(it) },
+                        onDismissKeyboard = { requestHideSelf(0) } // YENİ: KLAVYE KAPATICI
                     )
                     if (bp > 0) Spacer(Modifier.fillMaxWidth().height(bp.dp))
                 }
             }
         }
     }
+    override fun onDestroy() { clipboard?.destroy(); clipboard = null; super.onDestroy() }
 }

@@ -7,20 +7,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import handboard.app.core.theme.*
+import handboard.app.core.theme.ActionKeyBackground
+import handboard.app.core.theme.KeyBackground
+import handboard.app.core.theme.KeyText
+import handboard.app.core.theme.KeyTextDim
+import handboard.app.core.theme.KeyboardBackground
+import handboard.app.core.theme.ShiftActiveBackground
 import handboard.app.layout.ui.ContentCopyIcon
 import handboard.app.layout.ui.RefreshIcon
 import handboard.app.layout.ui.SwapHorizIcon
@@ -40,7 +41,17 @@ fun CurrencyPanel(
     val isLoading by repo.isLoading.collectAsState()
     val error by repo.error.collectAsState()
     val scope = rememberCoroutineScope()
-    val currencies = repo.currencies
+    
+    // Gelişmiş Dinamik Liste
+    val currencies = remember(rates) { 
+        val list = mutableListOf<CurrencyInfo>()
+        if(rates.isEmpty()){
+            list.addAll(listOf(CurrencyInfo("TRY", "TL", "₺"), CurrencyInfo("USD", "Dol", "$"), CurrencyInfo("EUR", "Eur", "€"), CurrencyInfo("GBP", "Sterlin", "£")))
+        } else {
+            rates.keys.forEach { code -> list.add(CurrencyInfo(code, code, code)) }
+        }
+        list.sortedBy { it.code }
+    }
 
     var from by remember { mutableStateOf("USD") }
     var to by remember { mutableStateOf("TRY") }
@@ -64,13 +75,9 @@ fun CurrencyPanel(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("💱 Currency Converter", color = KeyTextDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Row {
-                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { scope.launch { repo.loadRates(from) } }.padding(8.dp)) {
-                    RefreshIcon(tint = KeyText, size = 14.dp)
-                }
+                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { scope.launch { repo.loadRates(from) } }.padding(8.dp)) { RefreshIcon(tint = KeyText, size = 14.dp) }
                 Spacer(Modifier.width(8.dp))
-                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(8.dp)) {
-                    Text("✕", color = KeyText, fontSize = 12.sp)
-                }
+                Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(8.dp)) { Text("✕", color = KeyText, fontSize = 12.sp) }
             }
         }
 
@@ -87,9 +94,7 @@ fun CurrencyPanel(
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             CurrencyChipRow(selected = from, items = currencies, onSelect = { from = it; scope.launch { repo.loadRates(it) } }, modifier = Modifier.weight(1f))
-            Box(modifier = Modifier.padding(horizontal=4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { val tmp = from; from = to; to = tmp; scope.launch { repo.loadRates(from) } }.padding(8.dp)) { 
-                SwapHorizIcon(tint = KeyText, size = 16.dp) 
-            }
+            Box(modifier = Modifier.padding(horizontal=4.dp).clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { val tmp = from; from = to; to = tmp; scope.launch { repo.loadRates(from) } }.padding(8.dp)) { SwapHorizIcon(tint = KeyText, size = 16.dp) }
             CurrencyChipRow(selected = to, items = currencies, onSelect = { to = it }, modifier = Modifier.weight(1f))
         }
 
@@ -119,8 +124,10 @@ private fun CurrencyChipRow(selected: String, items: List<CurrencyInfo>, onSelec
         items(items) { info ->
             val isSelected = info.code == selected
             Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(if (isSelected) ShiftActiveBackground else ActionKeyBackground).clickable { onSelect(info.code) }.padding(horizontal=8.dp, vertical=6.dp)) {
-                Text("${info.symbol} ${info.code}", color = KeyText, fontSize = 12.sp, fontWeight = if(isSelected) FontWeight.Bold else FontWeight.Normal)
+                Text("${info.symbol}", color = KeyText, fontSize = 12.sp, fontWeight = if(isSelected) FontWeight.Bold else FontWeight.Normal)
             }
         }
     }
 }
+
+data class CurrencyInfo(val code: String, val name: String, val symbol: String)

@@ -1,21 +1,40 @@
 package handboard.app.layout.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import handboard.app.clipboard.ClipboardHistory
 import handboard.app.clipboard.ClipboardItem
 import handboard.app.clipboard.ClipboardView
-import handboard.app.core.theme.*
+import handboard.app.core.theme.KeyboardBackground
+import handboard.app.core.theme.NumberRowBackground
 import handboard.app.emoji.EmojiView
 import handboard.app.emoji.KaomojiView
 import handboard.app.search.SearchPanel
 import handboard.app.currency.CurrencyPanel
-import handboard.app.layout.*
+import handboard.app.layout.KeyAction
+import handboard.app.layout.KeyData
+import handboard.app.layout.KeyStyle
+import handboard.app.layout.KeyboardLayer
+import handboard.app.layout.KeyboardState
+import handboard.app.layout.LayoutSwitcher
 import handboard.app.settings.PreferencesManager
 import kotlinx.coroutines.launch
 
@@ -23,9 +42,12 @@ import kotlinx.coroutines.launch
 fun KeyboardView(
     layoutSwitcher: LayoutSwitcher,
     preferencesManager: PreferencesManager,
-    heightScale: Float = 1f, hapticEnabled: Boolean = true, soundEnabled: Boolean = false,
-    numberRowEnabled: Boolean = false, spacebarCursor: Boolean = true,
-    clipboardEnabled: Boolean = true, searchEnabled: Boolean = true, currencyEnabled: Boolean = true,
+    heightScale: Float = 1f,
+    hapticEnabled: Boolean = true,
+    soundEnabled: Boolean = false,
+    numberRowEnabled: Boolean = false,
+    spacebarCursor: Boolean = true,
+    clipboardEnabled: Boolean = false, searchEnabled: Boolean = true, currencyEnabled: Boolean = true,
     kaomojiEnabled: Boolean = true, phrasesEnabled: Boolean = true,
     clipboardHistory: ClipboardHistory? = null,
     suggestionBar: (@Composable () -> Unit)? = null,
@@ -34,7 +56,8 @@ fun KeyboardView(
     onCursorMove: (Int) -> Unit = {}, onCursorHome: () -> Unit = {}, onCursorEnd: () -> Unit = {},
     onSelectAll: () -> Unit = {}, onCopy: () -> Unit = {}, onCut: () -> Unit = {},
     onPaste: () -> Unit = {}, onUndo: () -> Unit = {}, onRedo: () -> Unit = {},
-    onPasteImage: (ClipboardItem) -> Unit = {}
+    onPasteImage: (ClipboardItem) -> Unit = {},
+    onDismissKeyboard: () -> Unit = {} // YENİ
 ) {
     val state = remember { KeyboardState() }
     val layout = layoutSwitcher.currentLayout
@@ -68,8 +91,7 @@ fun KeyboardView(
             )
         } else {
             when (currentPanel) {
-                KeyboardPanel.SEARCH -> SearchPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onTextCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
-                KeyboardPanel.TRANSLATE -> TranslatePanel(query = panelQuery, onQueryChange = { panelQuery = it }, onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
+                KeyboardPanel.SEARCH -> SearchPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onTextCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onDismissKeyboard = onDismissKeyboard)
                 KeyboardPanel.CURRENCY -> CurrencyPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onResultCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
                 else -> {}
             }
@@ -80,11 +102,7 @@ fun KeyboardView(
                 Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 4.dp).padding(bottom = 6.dp)) {
                     if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {
                         Row(modifier = Modifier.fillMaxWidth().background(NumberRowBackground).padding(vertical = 1.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            numberRow.forEach { kd ->
-                                KeyView(modifier = Modifier.weight(1f), keyData = kd, isShifted = false, isCapsLock = false, currentLayer = state.currentLayer, heightScale = heightScale * 0.8f, hapticEnabled = hapticEnabled, soundEnabled = soundEnabled,
-                                    onClick = { if (isInputPanel) panelQuery += kd.label else onTextInput(kd.label) }
-                                )
-                            }
+                            numberRow.forEach { kd -> KeyView(modifier = Modifier.weight(1f), keyData = kd, isShifted = false, isCapsLock = false, currentLayer = state.currentLayer, heightScale = heightScale * 0.8f, hapticEnabled = hapticEnabled, soundEnabled = soundEnabled, onClick = { if (isInputPanel) panelQuery += kd.label else onTextInput(kd.label) }) }
                         }
                     }
 

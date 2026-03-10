@@ -16,14 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import handboard.app.core.theme.ActionKeyBackground
-import handboard.app.core.theme.KeyBackground
-import handboard.app.core.theme.KeyText
-import handboard.app.core.theme.KeyTextDim
-import handboard.app.core.theme.KeyboardBackground
-import handboard.app.core.theme.ShiftActiveBackground
+import handboard.app.core.theme.*
 import handboard.app.layout.ui.SearchIcon
 import handboard.app.layout.ui.TravelExploreIcon
+import kotlinx.coroutines.delay
 import java.net.URLEncoder
 
 @Composable
@@ -34,31 +30,36 @@ fun SearchPanel(
     onClose: () -> Unit,
     maxHeight: Int = 260
 ) {
-    val repository = remember { SearchRepository() }
-    val suggestions by repository.suggestions.collectAsState()
-    val isLoading by repository.isLoading.collectAsState()
     var browserUrl by remember { mutableStateOf<String?>(null) }
+    var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(query) { repository.onQueryChanged(query) }
-    DisposableEffect(Unit) { onDispose { repository.destroy() } }
+    // Basit ve güvenli debounce
+    LaunchedEffect(query) {
+        if (query.isBlank()) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+        isLoading = true
+        delay(400) // Debounce
+        suggestions = GoogleSuggestApi.fetch(query)
+        isLoading = false
+    }
 
     fun openSearch(q: String) {
-        browserUrl = "https://www.google.com/search?q=${URLEncoder.encode(q.trim(), "UTF-8")}"
+        if (q.isNotBlank()) {
+            browserUrl = "https://www.google.com/search?q=${URLEncoder.encode(q.trim(), "UTF-8")}"
+        }
     }
 
     AnimatedContent(targetState = browserUrl, label = "search_screen") { url ->
         if (url != null) {
-            InKeyboardBrowser(
-                url = url,
-                onClose = { browserUrl = null },
-                onCommitText = { onTextCommit(it); onClose() },
-                modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp)
-            )
+            InKeyboardBrowser(url = url, onClose = { browserUrl = null }, onCommitText = { onTextCommit(it); onClose() }, modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp))
         } else {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp).background(KeyboardBackground).padding(6.dp)) {
-                // Arama Kutusu (Fake Input)
+                // Arama Kutusu (Sahte Input)
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(KeyBackground).clickable { if (query.isNotBlank()) openSearch(query) }.padding(10.dp)) {
+                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(KeyBackground).clickable { openSearch(query) }.padding(10.dp)) {
                         if (query.isEmpty()) Text("🔍 Type to search Google...", color = KeyTextDim, fontSize = 14.sp)
                         else Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(query, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -72,9 +73,7 @@ fun SearchPanel(
                         }
                         Spacer(Modifier.width(6.dp))
                     }
-                    Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(10.dp)) {
-                        Text("✕", color = KeyText)
-                    }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(10.dp)) { Text("✕", color = KeyText) }
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -84,10 +83,7 @@ fun SearchPanel(
                 // Öneriler
                 LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(suggestions) { suggestion ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { openSearch(suggestion) }.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { openSearch(suggestion) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             SearchIcon(tint = KeyTextDim, size = 16.dp)
                             Spacer(Modifier.width(8.dp))
                             Text(text = suggestion, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), fontWeight = if (suggestion.startsWith(query, true)) FontWeight.Normal else FontWeight.Bold)

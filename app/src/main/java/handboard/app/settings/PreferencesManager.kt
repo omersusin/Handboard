@@ -28,6 +28,10 @@ class PreferencesManager(private val context: Context) {
         val KEY_AUTOCORRECT = booleanPreferencesKey("autocorrect_enabled")
         val KEY_BOTTOM_PADDING = intPreferencesKey("bottom_padding")
         val KEY_CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
+        val KEY_SEARCH_ENABLED = booleanPreferencesKey("search_enabled")
+        val KEY_CURRENCY_ENABLED = booleanPreferencesKey("currency_enabled")
+        val KEY_KAOMOJI_ENABLED = booleanPreferencesKey("kaomoji_enabled")
+        val KEY_PHRASES_ENABLED = booleanPreferencesKey("phrases_enabled")
         val KEY_FOLLOW_SYSTEM_THEME = booleanPreferencesKey("follow_system_theme")
         val KEY_THEME_PREFERENCE = stringPreferencesKey("theme_preference")
         val KEY_NUMBER_ROW = booleanPreferencesKey("number_row_enabled")
@@ -50,7 +54,14 @@ class PreferencesManager(private val context: Context) {
     val predictionsEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_PREDICTIONS] ?: true }
     val autocorrectEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTOCORRECT] ?: true }
     val bottomPadding: Flow<Int> = context.dataStore.data.map { it[KEY_BOTTOM_PADDING] ?: 0 }
-    val clipboardEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CLIPBOARD_ENABLED] ?: false }
+    
+    // Panel Toggles
+    val clipboardEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CLIPBOARD_ENABLED] ?: true }
+    val searchEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_SEARCH_ENABLED] ?: true }
+    val currencyEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CURRENCY_ENABLED] ?: true }
+    val kaomojiEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_KAOMOJI_ENABLED] ?: true }
+    val phrasesEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_PHRASES_ENABLED] ?: true }
+
     val followSystemTheme: Flow<Boolean> = context.dataStore.data.map { it[KEY_FOLLOW_SYSTEM_THEME] ?: false }
     val themePreference: Flow<String> = context.dataStore.data.map { it[KEY_THEME_PREFERENCE] ?: "system" }
     val numberRowEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_NUMBER_ROW] ?: false }
@@ -72,7 +83,14 @@ class PreferencesManager(private val context: Context) {
     suspend fun setPredictionsEnabled(v: Boolean) { context.dataStore.edit { it[KEY_PREDICTIONS] = v } }
     suspend fun setAutocorrectEnabled(v: Boolean) { context.dataStore.edit { it[KEY_AUTOCORRECT] = v } }
     suspend fun setBottomPadding(v: Int) { context.dataStore.edit { it[KEY_BOTTOM_PADDING] = v } }
+    
+    // Panel Setters
     suspend fun setClipboardEnabled(v: Boolean) { context.dataStore.edit { it[KEY_CLIPBOARD_ENABLED] = v } }
+    suspend fun setSearchEnabled(v: Boolean) { context.dataStore.edit { it[KEY_SEARCH_ENABLED] = v } }
+    suspend fun setCurrencyEnabled(v: Boolean) { context.dataStore.edit { it[KEY_CURRENCY_ENABLED] = v } }
+    suspend fun setKaomojiEnabled(v: Boolean) { context.dataStore.edit { it[KEY_KAOMOJI_ENABLED] = v } }
+    suspend fun setPhrasesEnabled(v: Boolean) { context.dataStore.edit { it[KEY_PHRASES_ENABLED] = v } }
+
     suspend fun setFollowSystemTheme(v: Boolean) { context.dataStore.edit { it[KEY_FOLLOW_SYSTEM_THEME] = v } }
     suspend fun setThemePreference(v: String) { context.dataStore.edit { it[KEY_THEME_PREFERENCE] = v } }
     suspend fun setNumberRowEnabled(v: Boolean) { context.dataStore.edit { it[KEY_NUMBER_ROW] = v } }

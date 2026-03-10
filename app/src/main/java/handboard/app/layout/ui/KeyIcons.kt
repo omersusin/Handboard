@@ -43,3 +43,24 @@ import kotlin.math.sin
 @Composable fun TravelExploreIcon(tint: Color, size: Dp = 16.dp) { Canvas(modifier = Modifier.size(size)) { val s = this.size.minDimension; val stroke = s * 0.09f; val center = Offset(s * 0.44f, s * 0.44f); val globeR = s * 0.30f; drawCircle(tint, globeR, center, style = Stroke(stroke)); drawLine(tint, Offset(center.x - globeR, center.y), Offset(center.x + globeR, center.y), stroke * 0.7f, StrokeCap.Round); drawOval(color = tint, topLeft = Offset(center.x - globeR * 0.4f, center.y - globeR), size = Size(globeR * 0.8f, globeR * 2f), style = Stroke(stroke * 0.7f)); val magCenter = Offset(s * 0.72f, s * 0.72f); val magR = s * 0.12f; drawCircle(tint, magR, magCenter, style = Stroke(stroke)); drawLine(tint, Offset(magCenter.x + magR * 0.707f, magCenter.y + magR * 0.707f), Offset(s * 0.90f, s * 0.90f), stroke, StrokeCap.Round) } }
 @Composable fun CloseIcon(tint: Color, size: Dp = 18.dp) { Canvas(modifier = Modifier.size(size)) { val s = this.size.minDimension; val stroke = s * 0.12f; val pad = s * 0.22f; drawLine(tint, Offset(pad, pad), Offset(s - pad, s - pad), stroke, StrokeCap.Round); drawLine(tint, Offset(s - pad, pad), Offset(pad, s - pad), stroke, StrokeCap.Round) } }
 @Composable fun ClearIcon(tint: Color, size: Dp = 18.dp) { Canvas(modifier = Modifier.size(size)) { val s = this.size.minDimension; val center = Offset(s / 2f, s / 2f); val radius = s * 0.40f; val stroke = s * 0.10f; val xPad = s * 0.30f; drawCircle(color = tint.copy(alpha = 0.15f), radius = radius, center = center); drawCircle(color = tint, radius = radius, center = center, style = Stroke(stroke)); drawLine(tint, Offset(xPad, xPad), Offset(s - xPad, s - xPad), stroke, StrokeCap.Round); drawLine(tint, Offset(s - xPad, xPad), Offset(xPad, s - xPad), stroke, StrokeCap.Round) } }
+
+@Composable
+fun PhraseIcon(tint: Color, size: Dp = 18.dp) {
+    Canvas(modifier = Modifier.size(size)) {
+        val w = this.size.width; val h = this.size.height; val sw = w * 0.08f
+        val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val bubble = Path().apply {
+            moveTo(w*0.15f, h*0.25f); lineTo(w*0.85f, h*0.25f)
+            quadraticBezierTo(w*0.95f, h*0.25f, w*0.95f, h*0.35f)
+            lineTo(w*0.95f, h*0.65f); quadraticBezierTo(w*0.95f, h*0.75f, w*0.85f, h*0.75f)
+            lineTo(w*0.45f, h*0.75f); lineTo(w*0.20f, h*0.90f)
+            lineTo(w*0.25f, h*0.75f); lineTo(w*0.15f, h*0.75f)
+            quadraticBezierTo(w*0.05f, h*0.75f, w*0.05f, h*0.65f)
+            lineTo(w*0.05f, h*0.35f); quadraticBezierTo(w*0.05f, h*0.25f, w*0.15f, h*0.25f)
+            close()
+        }
+        drawPath(bubble, tint, style = stroke)
+        drawLine(tint, Offset(w*0.30f, h*0.45f), Offset(w*0.70f, h*0.45f), strokeWidth = sw)
+        drawLine(tint, Offset(w*0.30f, h*0.55f), Offset(w*0.60f, h*0.55f), strokeWidth = sw)
+    }
+}

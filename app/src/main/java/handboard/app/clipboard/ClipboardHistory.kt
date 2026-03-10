@@ -21,7 +21,6 @@ class ClipboardHistory(private val context: Context) {
     private var clipboardManager: ClipboardManager? = null
     private var listener: ClipboardManager.OnPrimaryClipChangedListener? = null
 
-    // Observable state for Compose
     val items = mutableStateListOf<ClipboardItem>()
 
     fun initialize() {
@@ -37,7 +36,8 @@ class ClipboardHistory(private val context: Context) {
         clipboardManager = null
     }
 
-    private fun readCurrentClip() {
+    // ARTIK PUBLIC
+    fun readCurrentClip() {
         try {
             val clip = clipboardManager?.primaryClip ?: return
             if (clip.itemCount == 0) return
@@ -59,7 +59,6 @@ class ClipboardHistory(private val context: Context) {
                 ClipboardItem(text = text)
             } else return
 
-            // Avoid duplicates
             if (items.isNotEmpty()) {
                 val last = items.first()
                 if (last.text == clipItem.text && last.imageUri == clipItem.imageUri) return
@@ -71,6 +70,5 @@ class ClipboardHistory(private val context: Context) {
     }
 
     fun removeItem(item: ClipboardItem) { items.remove(item) }
-
     fun clearAll() { items.clear() }
 }

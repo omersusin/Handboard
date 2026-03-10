@@ -18,7 +18,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            // ★ CRASH SEBEBİ BUYDU. ProGuard/R8 sınıfları siliyordu. Kapatıldı.
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -31,8 +32,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     buildFeatures {

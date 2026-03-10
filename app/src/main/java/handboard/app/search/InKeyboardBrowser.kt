@@ -19,12 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import handboard.app.core.theme.ActionKeyBackground
-import handboard.app.core.theme.KeyBackground
-import handboard.app.core.theme.KeyText
-import handboard.app.core.theme.KeyTextDim
-import handboard.app.core.theme.KeyboardBackground
-import handboard.app.core.theme.ShiftActiveBackground
+import handboard.app.core.theme.*
 import handboard.app.layout.ui.*
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -38,7 +33,7 @@ fun InKeyboardBrowser(
     val context = LocalContext.current
     var webView by remember { mutableStateOf<WebView?>(null) }
     var currentUrl by remember { mutableStateOf(url) }
-    var pageTitle by remember { mutableStateOf("Yükleniyor…") }
+    var pageTitle by remember { mutableStateOf("Yükleniyor...") }
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
@@ -69,7 +64,7 @@ fun InKeyboardBrowser(
 
         AnimatedVisibility(visible = isLoading) { LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().height(2.dp), color = ShiftActiveBackground) }
 
-        // WebView Entegrasyonu
+        // WebView
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {

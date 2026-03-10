@@ -57,7 +57,8 @@ fun KeyboardView(
     onSelectAll: () -> Unit = {}, onCopy: () -> Unit = {}, onCut: () -> Unit = {},
     onPaste: () -> Unit = {}, onUndo: () -> Unit = {}, onRedo: () -> Unit = {},
     onPasteImage: (ClipboardItem) -> Unit = {},
-    onDismissKeyboard: () -> Unit = {} // YENİ
+    onOpenSettings: () -> Unit = {},
+    onDismissKeyboard: () -> Unit = {}
 ) {
     val state = remember { KeyboardState() }
     val layout = layoutSwitcher.currentLayout
@@ -87,11 +88,13 @@ fun KeyboardView(
                     layoutSwitcher.nextLayout(); state.switchToLetters(); currentPanel = KeyboardPanel.KEYBOARD
                     scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
                 },
-                onSwitchPanel = { currentPanel = it; panelQuery = "" }
+                onSwitchPanel = { currentPanel = it; panelQuery = "" },
+                onOpenSettings = onOpenSettings
             )
         } else {
             when (currentPanel) {
                 KeyboardPanel.SEARCH -> SearchPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onTextCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onDismissKeyboard = onDismissKeyboard)
+                KeyboardPanel.TRANSLATE -> TranslatePanel(query = panelQuery, onQueryChange = { panelQuery = it }, onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
                 KeyboardPanel.CURRENCY -> CurrencyPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onResultCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
                 else -> {}
             }
@@ -125,15 +128,7 @@ fun KeyboardView(
                                                 else -> {}
                                             }
                                         } else {
-                                            when (val action = kd.action) {
-                                                is KeyAction.Text -> { val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char; onTextInput(text); state.onTextCommitted() }
-                                                KeyAction.Space -> { onTextInput(" "); state.onTextCommitted() }
-                                                KeyAction.Backspace -> onBackspace()
-                                                KeyAction.Enter -> onEnter()
-                                                KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
-                                                KeyAction.SwitchToSymbols -> state.switchToSymbols()
-                                                KeyAction.SwitchToLetters -> state.switchToLetters()
-                                            }
+                                            handleKeyPress(kd, state, hasSymbolRows2, onTextInput, onBackspace, onEnter)
                                         }
                                     }
                                 )
@@ -147,5 +142,17 @@ fun KeyboardView(
         else if (currentPanel == KeyboardPanel.KAOMOJI) KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
         else if (currentPanel == KeyboardPanel.PHRASES) PhrasesPanel(onCommitText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD }, onClose = { currentPanel = KeyboardPanel.KEYBOARD })
         else if (currentPanel == KeyboardPanel.TEXT_EDITING) TextEditingBar(onCursorLeft = { onCursorMove(-1) }, onCursorRight = { onCursorMove(1) }, onCursorHome = onCursorHome, onCursorEnd = onCursorEnd, onSelectAll = onSelectAll, onCopy = onCopy, onCut = onCut, onPaste = onPaste, onUndo = onUndo, onRedo = onRedo, onClose = { currentPanel = KeyboardPanel.KEYBOARD })
+    }
+}
+
+private fun handleKeyPress(keyData: KeyData, state: KeyboardState, hasSymbolRows2: Boolean, onTextInput: (String) -> Unit, onBackspace: () -> Unit, onEnter: () -> Unit) {
+    when (val action = keyData.action) {
+        is KeyAction.Text -> { val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char; onTextInput(text); state.onTextCommitted() }
+        KeyAction.Space -> { onTextInput(" "); state.onTextCommitted() }
+        KeyAction.Backspace -> onBackspace()
+        KeyAction.Enter -> onEnter()
+        KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
+        KeyAction.SwitchToSymbols -> state.switchToSymbols()
+        KeyAction.SwitchToLetters -> state.switchToLetters()
     }
 }

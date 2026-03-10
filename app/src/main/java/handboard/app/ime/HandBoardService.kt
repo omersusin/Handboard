@@ -1,5 +1,6 @@
 package handboard.app.ime
 
+import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.text.InputType
@@ -16,7 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.lifecycle.*
 import androidx.savedstate.*
-import handboard.app.clipboard.*
+import handboard.app.MainActivity
+import handboard.app.clipboard.ClipboardHistory
+import handboard.app.clipboard.ClipboardItem
 import handboard.app.core.theme.*
 import handboard.app.layout.LayoutSwitcher
 import handboard.app.layout.ui.KeyboardView
@@ -44,8 +47,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         prefs = PreferencesManager(this)
-        clipboard = ClipboardHistory(this)
-        clipboard?.initialize()
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -106,6 +107,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 val sc2 by prefs.spacebarCursor.collectAsState(initial = true)
                 val lk by prefs.largeKeys.collectAsState(initial = false)
                 
+                // Panel Toggles
                 val clipboardEnabled by prefs.clipboardEnabled.collectAsState(initial = true)
                 val searchEnabled by prefs.searchEnabled.collectAsState(initial = true)
                 val currencyEnabled by prefs.currencyEnabled.collectAsState(initial = true)
@@ -115,6 +117,11 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
                 val multiEnabled by prefs.multilingualEnabled.collectAsState(initial = false)
                 val activeDicts by prefs.activeDicts.collectAsState(initial = setOf("en_us"))
                 val dictId by prefs.dictionaryId.collectAsState(initial = "en_us")
+
+                LaunchedEffect(clipboardEnabled) {
+                    if (clipboardEnabled && clipboard == null) { clipboard = ClipboardHistory(this@HandBoardService); clipboard?.initialize() }
+                    else if (!clipboardEnabled) { clipboard?.destroy(); clipboard = null }
+                }
 
                 LaunchedEffect(multiEnabled, activeDicts, dictId) {
                     withContext(Dispatchers.IO) { predictor.loadDictionaries(this@HandBoardService, if (multiEnabled) activeDicts else setOf(dictId)) }
@@ -128,51 +135,61 @@ class HandBoardService : InputMethodService(), LifecycleOwner, SavedStateRegistr
 
                 fun updateSuggestions() { sugs.clear(); if (!showPred) return; sugs.addAll(predictor.predict(currentInputConnection?.getTextBeforeCursor(100, 0)?.toString() ?: "", sc)) }
 
-                KeyboardWrapper(widthFraction = wp / 100f, alignment = al) {
-                    KeyboardView(
-                        layoutSwitcher = ls, preferencesManager = prefs, heightScale = if (lk) hs * 1.25f else hs,
-                        hapticEnabled = hap, soundEnabled = snd, numberRowEnabled = nr, spacebarCursor = sc2,
-                        clipboardEnabled = clipboardEnabled, searchEnabled = searchEnabled, currencyEnabled = currencyEnabled,
-                        kaomojiEnabled = kaomojiEnabled, phrasesEnabled = phrasesEnabled,
-                        clipboardHistory = if (clipboardEnabled) clipboard else null,
-                        suggestionBar = if (showPred) { { SuggestionBar(suggestions = sugs, onSuggestionClick = { 
-                            val cur = getCurrentWord()
-                            if (cur.isNotEmpty()) currentInputConnection?.deleteSurroundingText(cur.length, 0)
-                            currentInputConnection?.commitText("$it ", 1)
-                            predictor.onWordCommitted(it)
-                            updateSuggestions()
-                        }) } } else null,
-                        onTextInput = { text ->
-                            val ic = currentInputConnection
-                            if (ic != null) {
-                                if (text == " ") {
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastSpaceTime < 400 && !isPasswordField) {
-                                        ic.deleteSurroundingText(1, 0); ic.commitText(". ", 1); lastSpaceTime = 0L; updateSuggestions(); return@KeyboardView
-                                    }
-                                    lastSpaceTime = now
-                                } else lastSpaceTime = 0L
-
-                                val final = if (text.length == 1 && text[0].isLetter() && ac && !isPasswordField) {
-                                    val b = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
-                                    if (b.isEmpty() || b.trimEnd().lastOrNull() in listOf('.', '!', '?', '\n')) text.uppercase() else text
-                                } else text
-                                ic.commitText(final, 1)
-                                if (text == " ") { val w = getCurrentWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w) }
+                Column {
+                    KeyboardWrapper(widthFraction = wp / 100f, alignment = al) {
+                        KeyboardView(
+                            layoutSwitcher = ls, preferencesManager = prefs, heightScale = if (lk) hs * 1.25f else hs,
+                            hapticEnabled = hap, soundEnabled = snd, numberRowEnabled = nr, spacebarCursor = sc2,
+                            clipboardEnabled = clipboardEnabled, searchEnabled = searchEnabled, currencyEnabled = currencyEnabled,
+                            kaomojiEnabled = kaomojiEnabled, phrasesEnabled = phrasesEnabled,
+                            clipboardHistory = if (clipboardEnabled) clipboard else null,
+                            suggestionBar = if (showPred) { { SuggestionBar(suggestions = sugs, onSuggestionClick = { 
+                                val cur = getCurrentWord()
+                                if (cur.isNotEmpty()) currentInputConnection?.deleteSurroundingText(cur.length, 0)
+                                currentInputConnection?.commitText("$it ", 1)
+                                predictor.onWordCommitted(it)
                                 updateSuggestions()
+                            }) } } else null,
+                            onTextInput = { text ->
+                                val ic = currentInputConnection
+                                if (ic != null) {
+                                    if (text == " ") {
+                                        val now = System.currentTimeMillis()
+                                        if (now - lastSpaceTime < 400 && !isPasswordField) {
+                                            ic.deleteSurroundingText(1, 0); ic.commitText(". ", 1); lastSpaceTime = 0L; updateSuggestions(); return@KeyboardView
+                                        }
+                                        lastSpaceTime = now
+                                    } else lastSpaceTime = 0L
+
+                                    val final = if (text.length == 1 && text[0].isLetter() && ac && !isPasswordField) {
+                                        val b = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
+                                        if (b.isEmpty() || b.trimEnd().lastOrNull() in listOf('.', '!', '?', '\n')) text.uppercase() else text
+                                    } else text
+                                    ic.commitText(final, 1)
+
+                                    if (text == " ") { val w = getCurrentWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w) }
+                                    updateSuggestions()
+                                }
+                            },
+                            onBackspace = { performBackspace(); updateSuggestions() },
+                            onEnter = { val w = getCurrentWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w); sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER); sugs.clear() },
+                            onEmojiInput = { currentInputConnection?.commitText(it, 1) },
+                            onCursorMove = { val c = if (it > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT; sendKey(c) },
+                            onCursorHome = { sendKey(KeyEvent.KEYCODE_MOVE_HOME) }, onCursorEnd = { sendKey(KeyEvent.KEYCODE_MOVE_END) },
+                            onSelectAll = { currentInputConnection?.performContextMenuAction(android.R.id.selectAll) }, onCopy = { currentInputConnection?.performContextMenuAction(android.R.id.copy) }, onCut = { currentInputConnection?.performContextMenuAction(android.R.id.cut) }, onPaste = { currentInputConnection?.performContextMenuAction(android.R.id.paste) },
+                            onUndo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) }, onRedo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) },
+                            onPasteImage = { pasteImage(it) },
+                            onDismissKeyboard = { requestHideSelf(0) },
+                            onOpenSettings = {
+                                val intent = Intent(this@HandBoardService, MainActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                                requestHideSelf(0)
                             }
-                        },
-                        onBackspace = { performBackspace(); updateSuggestions() },
-                        onEnter = { val w = getCurrentWord(); if (w.isNotEmpty()) predictor.onWordCommitted(w); sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER); sugs.clear() },
-                        onEmojiInput = { currentInputConnection?.commitText(it, 1) },
-                        onCursorMove = { val c = if (it > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT; sendKey(c) },
-                        onCursorHome = { sendKey(KeyEvent.KEYCODE_MOVE_HOME) }, onCursorEnd = { sendKey(KeyEvent.KEYCODE_MOVE_END) },
-                        onSelectAll = { currentInputConnection?.performContextMenuAction(android.R.id.selectAll) }, onCopy = { currentInputConnection?.performContextMenuAction(android.R.id.copy) }, onCut = { currentInputConnection?.performContextMenuAction(android.R.id.cut) }, onPaste = { currentInputConnection?.performContextMenuAction(android.R.id.paste) },
-                        onUndo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) }, onRedo = { sendKey(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) },
-                        onPasteImage = { pasteImage(it) },
-                        onDismissKeyboard = { requestHideSelf(0) } // YENİ: KLAVYE KAPATICI
-                    )
-                    if (bp > 0) Spacer(Modifier.fillMaxWidth().height(bp.dp))
+                        )
+                    }
+                    if (bp > 0) Spacer(Modifier.fillMaxWidth().height(bp.dp).background(KeyboardBackground))
                 }
             }
         }

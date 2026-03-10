@@ -2,17 +2,32 @@ package handboard.app.layout.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import handboard.app.core.theme.*
+import handboard.app.core.theme.ActionKeyBackground
+import handboard.app.core.theme.KeyText
+import handboard.app.core.theme.KeyTextDim
+import handboard.app.core.theme.ShiftActiveBackground
 
 enum class KeyboardPanel { KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING, SEARCH, TRANSLATE, CURRENCY, PHRASES }
 
@@ -20,7 +35,7 @@ enum class KeyboardPanel { KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING, SE
 fun LayoutToolbar(
     currentLayoutName: String, currentPanel: KeyboardPanel,
     searchEnabled: Boolean, currencyEnabled: Boolean, clipboardEnabled: Boolean, kaomojiEnabled: Boolean, phrasesEnabled: Boolean,
-    onSwitchLayout: () -> Unit, onSwitchPanel: (KeyboardPanel) -> Unit
+    onSwitchLayout: () -> Unit, onSwitchPanel: (KeyboardPanel) -> Unit, onOpenSettings: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(38.dp).padding(horizontal = 4.dp, vertical = 2.dp),
@@ -47,6 +62,7 @@ fun LayoutToolbar(
             if (kaomojiEnabled) ToolbarIconButton({ KaomojiIcon(tint = KeyText, size = 16.dp) }, currentPanel == KeyboardPanel.KAOMOJI) { onSwitchPanel(if (currentPanel == KeyboardPanel.KAOMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.KAOMOJI) }
             ToolbarIconButton({ EmojiIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.EMOJI) { onSwitchPanel(if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.EMOJI) }
             ToolbarIconButton({ GlobeIcon(tint=KeyText, size=16.dp) }, false, onSwitchLayout)
+            ToolbarIconButton({ SettingsGearIcon(modifier=Modifier.size(16.dp), tint=KeyText) }, false, onOpenSettings)
         }
     }
 }

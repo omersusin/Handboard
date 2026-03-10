@@ -44,3 +44,27 @@ import kotlin.math.sin
 @Composable fun CloseIcon(tint: Color, size: Dp = 18.dp) { Canvas(modifier = Modifier.size(size)) { val s = this.size.minDimension; val stroke = s * 0.12f; val pad = s * 0.22f; drawLine(tint, Offset(pad, pad), Offset(s - pad, s - pad), stroke, StrokeCap.Round); drawLine(tint, Offset(s - pad, pad), Offset(pad, s - pad), stroke, StrokeCap.Round) } }
 @Composable fun ClearIcon(tint: Color, size: Dp = 18.dp) { Canvas(modifier = Modifier.size(size)) { val s = this.size.minDimension; val center = Offset(s / 2f, s / 2f); val radius = s * 0.40f; val stroke = s * 0.10f; val xPad = s * 0.30f; drawCircle(color = tint.copy(alpha = 0.15f), radius = radius, center = center); drawCircle(color = tint, radius = radius, center = center, style = Stroke(stroke)); drawLine(tint, Offset(xPad, xPad), Offset(s - xPad, s - xPad), stroke, StrokeCap.Round); drawLine(tint, Offset(s - xPad, xPad), Offset(xPad, s - xPad), stroke, StrokeCap.Round) } }
 @Composable fun PhraseIcon(tint: Color, size: Dp = 18.dp) { Canvas(modifier = Modifier.size(size)) { val w = this.size.width; val h = this.size.height; val sw = w * 0.08f; val stroke = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round); val bubble = Path().apply { moveTo(w*0.15f, h*0.25f); lineTo(w*0.85f, h*0.25f); quadraticBezierTo(w*0.95f, h*0.25f, w*0.95f, h*0.35f); lineTo(w*0.95f, h*0.65f); quadraticBezierTo(w*0.95f, h*0.75f, w*0.85f, h*0.75f); lineTo(w*0.45f, h*0.75f); lineTo(w*0.20f, h*0.90f); lineTo(w*0.25f, h*0.75f); lineTo(w*0.15f, h*0.75f); quadraticBezierTo(w*0.05f, h*0.75f, w*0.05f, h*0.65f); lineTo(w*0.05f, h*0.35f); quadraticBezierTo(w*0.05f, h*0.25f, w*0.15f, h*0.25f); close() }; drawPath(bubble, tint, style = stroke); drawLine(tint, Offset(w*0.30f, h*0.45f), Offset(w*0.70f, h*0.45f), strokeWidth = sw); drawLine(tint, Offset(w*0.30f, h*0.55f), Offset(w*0.60f, h*0.55f), strokeWidth = sw) } }
+
+@Composable
+fun SettingsGearIcon(modifier: Modifier, tint: Color) {
+    Canvas(modifier) {
+        val s = size.minDimension
+        val cx = s / 2f; val cy = s / 2f
+        val sw = s * 0.10f
+        val innerR = s * 0.16f
+        val outerR = s * 0.38f
+
+        drawCircle(tint, innerR, Offset(cx, cy), style = Stroke(sw))
+
+        for (i in 0 until 6) {
+            val angle = Math.toRadians(i * 60.0 + 15.0)
+            val x1 = cx + (innerR + sw * 0.3f) * cos(angle).toFloat()
+            val y1 = cy + (innerR + sw * 0.3f) * sin(angle).toFloat()
+            val x2 = cx + outerR * cos(angle).toFloat()
+            val y2 = cy + outerR * sin(angle).toFloat()
+            drawLine(tint, Offset(x1, y1), Offset(x2, y2), sw * 2.4f, cap = StrokeCap.Round)
+        }
+
+        drawCircle(tint, outerR - sw * 0.5f, Offset(cx, cy), style = Stroke(sw * 0.5f))
+    }
+}

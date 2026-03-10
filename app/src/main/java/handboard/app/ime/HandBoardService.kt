@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.lifecycle.*
@@ -91,12 +90,9 @@ class HandBoardService : InputMethodService(), LifecycleOwner, ViewModelStoreOwn
     override fun onCreateInputView(): View {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         
-        val view = ComposeView(this)
-        view.setViewTreeLifecycleOwner(this)
-        view.setViewTreeViewModelStoreOwner(this)
-        view.setViewTreeSavedStateRegistryOwner(this)
-
-        view.setContent {
+        // ★ ÇÖZÜM: ComposeView yerine daha önce yazdığımız createComposeView metodunu çağırıyoruz.
+        // Bu metod ViewTreeLifecycleOwner vb. atamaları Android'in DecorView'ına yapar.
+        return createComposeView(this, this) {
             val themePref by prefs.themePreference.collectAsState(initial = "system")
             val isSysDark = isSystemInDarkTheme()
             val useDark = when (themePref) { "light" -> false; "dark", "amoled" -> true; else -> isSysDark }
@@ -118,6 +114,7 @@ class HandBoardService : InputMethodService(), LifecycleOwner, ViewModelStoreOwn
                 val sc2 by prefs.spacebarCursor.collectAsState(initial = true)
                 val lk by prefs.largeKeys.collectAsState(initial = false)
                 
+                // Panel Toggles
                 val clipboardEnabled by prefs.clipboardEnabled.collectAsState(initial = true)
                 val searchEnabled by prefs.searchEnabled.collectAsState(initial = true)
                 val currencyEnabled by prefs.currencyEnabled.collectAsState(initial = true)
@@ -203,12 +200,11 @@ class HandBoardService : InputMethodService(), LifecycleOwner, ViewModelStoreOwn
                 }
             }
         }
-        return view
     }
-
+    
     override fun onDestroy() { 
-        clipboard?.destroy()
-        clipboard = null
+        clipboard?.destroy(); 
+        clipboard = null; 
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         store.clear()
         super.onDestroy() 

@@ -24,6 +24,8 @@ import handboard.app.core.theme.KeyboardBackground
 import handboard.app.core.theme.ShiftActiveBackground
 import handboard.app.layout.ui.SearchIcon
 import handboard.app.layout.ui.TravelExploreIcon
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
 @Composable
@@ -33,32 +35,44 @@ fun SearchPanel(
     onTextCommit: (String) -> Unit,
     onClose: () -> Unit,
     onDismissKeyboard: () -> Unit,
+    onBrowserStateChange: (Boolean) -> Unit, // ★ YENİ: Browser durumunu üst katmana haber ver
     maxHeight: Int = 260
 ) {
     val repository = remember { SearchRepository() }
     val suggestions by repository.suggestions.collectAsState()
     val isLoading by repository.isLoading.collectAsState()
     var browserUrl by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(query) { repository.onQueryChanged(query) }
     DisposableEffect(Unit) { onDispose { repository.destroy() } }
 
     fun openSearch(q: String) {
-        browserUrl = "https://www.google.com/search?q=${URLEncoder.encode(q.trim(), "UTF-8")}"
+        val encoded = URLEncoder.encode(q.trim(), "UTF-8")
+        browserUrl = "https://www.google.com/search?q=$encoded&hl=tr"
+        onBrowserStateChange(true) // Browser açılıyor
     }
 
     AnimatedContent(targetState = browserUrl, label = "search_screen") { url ->
         if (url != null) {
             InKeyboardBrowser(
                 url = url,
-                onClose = { browserUrl = null; onClose() },
-                onCommitText = { 
+                onClose = { 
+                    browserUrl = null
+                    onBrowserStateChange(false)
+                    onClose() 
+                },
+                onPasteUrl = { 
                     onTextCommit(it)
                     browserUrl = null
+                    onBrowserStateChange(false)
                     onClose()
+                    onDismissKeyboard()
                 },
-                onDismissKeyboard = onDismissKeyboard,
-                modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp)
+                onDismissKeyboard = {
+                    onDismissKeyboard()
+                },
+                modifier = Modifier.fillMaxWidth().height(maxHeight.dp)
             )
         } else {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight.dp).background(KeyboardBackground).padding(6.dp)) {
@@ -77,7 +91,9 @@ fun SearchPanel(
                         }
                         Spacer(Modifier.width(6.dp))
                     }
-                    Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(10.dp)) { Text("✕", color = KeyText) }
+                    Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { onClose() }.padding(10.dp)) {
+                        Text("✕", color = KeyText)
+                    }
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -86,11 +102,14 @@ fun SearchPanel(
 
                 LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(suggestions) { suggestion ->
-                        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { openSearch(suggestion) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            SearchIcon(tint = KeyTextDim, size = 16.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { openSearch(suggestion) }.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SearchIcon(modifier = Modifier.size(16.dp), color = KeyTextDim)
                             Spacer(Modifier.width(8.dp))
                             Text(text = suggestion, color = KeyText, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), fontWeight = if (suggestion.startsWith(query, true)) FontWeight.Normal else FontWeight.Bold)
-                            TravelExploreIcon(tint = ShiftActiveBackground, size = 16.dp)
+                            TravelExploreIcon(modifier = Modifier.size(16.dp), color = ShiftActiveBackground)
                         }
                     }
                 }

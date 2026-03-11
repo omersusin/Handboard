@@ -1,22 +1,15 @@
 package handboard.app.currency
 
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-data class CurrencyInfo(val code: String, val name: String, val symbol: String)
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 class CurrencyRepository {
-
-    val currencies = listOf(
-        CurrencyInfo("TRY", "Türk Lirası", "₺"), CurrencyInfo("USD", "ABD Doları", "$"),
-        CurrencyInfo("EUR", "Euro", "€"), CurrencyInfo("GBP", "İngiliz Sterlini", "£"),
-        CurrencyInfo("JPY", "Japon Yeni", "¥"), CurrencyInfo("CHF", "İsviçre Frangı", "Fr"),
-        CurrencyInfo("CAD", "Kanada Doları", "C$"), CurrencyInfo("AUD", "Avustralya Doları", "A$"),
-        CurrencyInfo("CNY", "Çin Yuanı", "¥"), CurrencyInfo("SAR", "Suudi Riyali", "﷼"),
-        CurrencyInfo("RUB", "Rus Rublesi", "₽"), CurrencyInfo("KRW", "Kore Wonu", "₩")
-    )
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -31,6 +24,12 @@ class CurrencyRepository {
     val error: StateFlow<String?> = _error.asStateFlow()
 
     private val cache = mutableMapOf<String, Map<String, Double>>()
+    
+    // YENİ: Dinamik oluşturulacak olan para birimi listesi
+    var availableCurrencies = listOf(
+        CurrencyInfo("TRY", "Türk Lirası", "₺"), CurrencyInfo("USD", "ABD Doları", "$"),
+        CurrencyInfo("EUR", "Euro", "€"), CurrencyInfo("GBP", "İngiliz Sterlini", "£")
+    )
 
     fun loadRates(base: String) {
         cache[base]?.let { 
@@ -44,12 +43,22 @@ class CurrencyRepository {
             _error.value = null
 
             try {
-                val result = CurrencyApi.fetchRates(base)
+                val result = fetchRatesFromApi(base)
                 if (isActive) {
                     if (result != null && result.isNotEmpty()) {
                         _rates.value = result
                         cache[base] = result
                         _error.value = null
+                        
+                        // Dinamik listeyi inşa et
+                        val newList = mutableListOf<CurrencyInfo>()
+                        val priority = listOf("TRY", "USD", "EUR", "GBP")
+                        result.keys.forEach { code -> 
+                            newList.add(CurrencyInfo(code, code, code.take(2)))
+                        }
+                        val sorted = newList.sortedBy { it.code }
+                        val top = priority.mapNotNull { p -> sorted.find { it.code == p } }
+                        availableCurrencies = top + sorted.filter { it.code !in priority }
                     } else {
                         _error.value = "Failed to fetch rates"
                     }
@@ -64,6 +73,29 @@ class CurrencyRepository {
         }
     }
 
+    private fun fetchRatesFromApi(base: String): Map<String, Double>? {
+        val url = URL("https://open.er-api.com/v6/latest/${base.uppercase()}")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.connectTimeout = 5000
+        conn.readTimeout = 5000
+
+        try {
+            if (conn.responseCode != 200) return null
+            val body = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val json = JSONObject(body)
+            if (json.optString("result") != "success") return null
+
+            val ratesObj = json.getJSONObject("rates")
+            val map = HashMap<String, Double>()
+            val keys = ratesObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                try { map[key] = ratesObj.getDouble(key) } catch (_: Exception) {}
+            }
+            return map
+        } finally { conn.disconnect() }
+    }
+
     fun convert(amount: Double, from: String, to: String): Double? {
         val r = _rates.value
         if (r.isEmpty()) return null
@@ -73,7 +105,7 @@ class CurrencyRepository {
         return amount * (toRate / fromRate)
     }
 
-    fun destroy() {
-        job.cancel()
-    }
+    fun destroy() { job.cancel() }
 }
+
+data class CurrencyInfo(val code: String, val name: String, val symbol: String)

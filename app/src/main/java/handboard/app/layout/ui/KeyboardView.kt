@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +68,9 @@ fun KeyboardView(
     val scope = rememberCoroutineScope()
     var panelQuery by remember { mutableStateOf("") } 
 
+    // ★ WebView açık mı durumu (Böylece klavyeyi ve toolbarı gizleyebiliriz)
+    var isBrowserOpen by remember { mutableStateOf(false) }
+
     val hasSymbolRows2 = layout.symbolRows2.isNotEmpty()
     val currentRows = when (state.currentLayer) {
         KeyboardLayer.LETTERS -> layout.letterRows; KeyboardLayer.SYMBOLS -> layout.symbolRows
@@ -76,11 +80,13 @@ fun KeyboardView(
 
     Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)).background(KeyboardBackground)) {
         
-        if (currentPanel == KeyboardPanel.KEYBOARD) suggestionBar?.invoke()
+        // Öneriler Çubuğu (Klavye Normal ve Browser Kapalı İken)
+        if (currentPanel == KeyboardPanel.KEYBOARD && !isBrowserOpen) suggestionBar?.invoke()
 
         val isInputPanel = currentPanel == KeyboardPanel.SEARCH || currentPanel == KeyboardPanel.TRANSLATE || currentPanel == KeyboardPanel.CURRENCY
 
-        if (!isInputPanel) {
+        // WebView Açık Değilse Toolbar Göster
+        if (!isBrowserOpen) {
             LayoutToolbar(
                 currentLayoutName = layoutSwitcher.currentLayoutName, currentPanel = currentPanel,
                 searchEnabled = searchEnabled, currencyEnabled = currencyEnabled, clipboardEnabled = clipboardEnabled,
@@ -93,16 +99,27 @@ fun KeyboardView(
                 onSwitchPanel = { currentPanel = it; panelQuery = "" },
                 onOpenSettings = onOpenSettings
             )
-        } else {
-            when (currentPanel) {
-                KeyboardPanel.SEARCH -> SearchPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onTextCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onDismissKeyboard = onDismissKeyboard)
-                KeyboardPanel.TRANSLATE -> TranslatePanel(query = panelQuery, onQueryChange = { panelQuery = it }, onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
-                KeyboardPanel.CURRENCY -> CurrencyPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onResultCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
-                else -> {}
-            }
         }
 
-        if (currentPanel == KeyboardPanel.KEYBOARD || isInputPanel) {
+        // Panel Yönlendirme (Browser açılırsa klavye gizlenir)
+        if (currentPanel == KeyboardPanel.SEARCH) {
+            SearchPanel(
+                query = panelQuery, 
+                onQueryChange = { panelQuery = it }, 
+                onTextCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = ""; isBrowserOpen = false }, 
+                onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = ""; isBrowserOpen = false }, 
+                onDismissKeyboard = onDismissKeyboard,
+                onBrowserStateChange = { isOpen -> isBrowserOpen = isOpen }, // Browser state yönetimi
+                maxHeight = if (isBrowserOpen) 400 else 260 // WebView açılınca yüksekliği arttırıyoruz
+            )
+        } else if (currentPanel == KeyboardPanel.TRANSLATE) {
+            TranslatePanel(query = panelQuery, onQueryChange = { panelQuery = it }, onInsertText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
+        } else if (currentPanel == KeyboardPanel.CURRENCY) {
+            CurrencyPanel(query = panelQuery, onQueryChange = { panelQuery = it }, onResultCommit = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" }, onClose = { currentPanel = KeyboardPanel.KEYBOARD; panelQuery = "" })
+        }
+
+        // Klavye Tuşlarını Sadece BROWSER KAPALIYKEN ve GEÇERLİ PANEL AÇIKKEN Çiz
+        if (!isBrowserOpen && (currentPanel == KeyboardPanel.KEYBOARD || isInputPanel)) {
             key(layoutSwitcher.currentLayoutName, state.currentLayer) {
                 Column(modifier = Modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 4.dp).padding(bottom = 6.dp)) {
                     if (numberRowEnabled && state.currentLayer == KeyboardLayer.LETTERS) {

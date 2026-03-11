@@ -33,8 +33,8 @@ import handboard.app.layout.ui.*
 fun InKeyboardBrowser(
     url: String,
     onClose: () -> Unit,
-    onCommitText: (String) -> Unit,
-    onDismissKeyboard: () -> Unit, // ★ EKLENDİ (Klavyeyi Kapatmak için)
+    onPasteUrl: (String) -> Unit,
+    onDismissKeyboard: () -> Unit, // ★ Kapatma İzni
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -48,6 +48,7 @@ fun InKeyboardBrowser(
 
     Column(modifier = modifier.fillMaxWidth().fillMaxHeight().background(KeyboardBackground)) {
         
+        // Üst Araç Çubuğu
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -57,7 +58,7 @@ fun InKeyboardBrowser(
                 webView?.destroy()
                 onClose()
                 onDismissKeyboard() 
-            }.padding(8.dp)) { CloseIcon(tint = KeyText, size = 16.dp) }
+            }.padding(8.dp)) { CloseIcon(modifier = Modifier.size(16.dp), color = KeyText) }
             
             Spacer(Modifier.width(4.dp))
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if(canGoBack) ActionKeyBackground else KeyboardBackground).clickable(enabled = canGoBack) { webView?.goBack() }.padding(8.dp)) { BackArrowIcon(tint = if(canGoBack) KeyText else KeyTextDim, size = 16.dp) }
@@ -66,7 +67,7 @@ fun InKeyboardBrowser(
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if(canGoForward) ActionKeyBackground else KeyboardBackground).clickable(enabled = canGoForward) { webView?.goForward() }.padding(8.dp)) { ForwardArrowIcon(tint = if(canGoForward) KeyText else KeyTextDim, size = 16.dp) }
             
             Spacer(Modifier.width(4.dp))
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { webView?.reload() }.padding(8.dp)) { RefreshIcon(tint = KeyText, size = 14.dp) }
+            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { webView?.reload() }.padding(8.dp)) { RefreshIcon(modifier = Modifier.size(14.dp), color = KeyText) }
 
             Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 Text(pageTitle, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = KeyText)
@@ -85,13 +86,13 @@ fun InKeyboardBrowser(
                     context.startActivity(Intent.createChooser(intent, "Paylaş").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 } catch (_: Exception) {}
                 onDismissKeyboard()
-            }.padding(8.dp)) { ShareIcon(tint = KeyText, size = 14.dp) }
+            }.padding(8.dp)) { ShareIcon(modifier = Modifier.size(14.dp), color = KeyText) }
 
             Spacer(Modifier.width(4.dp))
 
             // YAPIŞTIR TUŞU -> KLAVYEYİ KAPATIR
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ShiftActiveBackground).clickable { 
-                onCommitText(currentUrl)
+                onPasteUrl(currentUrl)
                 onDismissKeyboard()
             }.padding(8.dp)) { ContentCopyIcon(tint = KeyText, size = 14.dp) }
         }
@@ -123,7 +124,7 @@ fun InKeyboardBrowser(
                             if (reqUrl.startsWith("http")) return false
                             try {
                                 ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(reqUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                onDismissKeyboard()
+                                onDismissKeyboard() // Dışarı atarsa klavyeyi de kapat
                             } catch (_: Exception) {}
                             return true
                         }

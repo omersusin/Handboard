@@ -27,11 +27,17 @@ class PreferencesManager(private val context: Context) {
         val KEY_PREDICTIONS = booleanPreferencesKey("predictions_enabled")
         val KEY_AUTOCORRECT = booleanPreferencesKey("autocorrect_enabled")
         val KEY_BOTTOM_PADDING = intPreferencesKey("bottom_padding")
+        
+        // Panel Toggles
         val KEY_CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
         val KEY_SEARCH_ENABLED = booleanPreferencesKey("search_enabled")
         val KEY_CURRENCY_ENABLED = booleanPreferencesKey("currency_enabled")
         val KEY_KAOMOJI_ENABLED = booleanPreferencesKey("kaomoji_enabled")
         val KEY_PHRASES_ENABLED = booleanPreferencesKey("phrases_enabled")
+        val KEY_TRANSLATE_ENABLED = booleanPreferencesKey("translate_enabled")
+        val KEY_TEXT_EDITING_ENABLED = booleanPreferencesKey("text_editing_enabled")
+        val KEY_EMOJI_ENABLED = booleanPreferencesKey("emoji_enabled")
+
         val KEY_FOLLOW_SYSTEM_THEME = booleanPreferencesKey("follow_system_theme")
         val KEY_THEME_PREFERENCE = stringPreferencesKey("theme_preference")
         val KEY_NUMBER_ROW = booleanPreferencesKey("number_row_enabled")
@@ -61,6 +67,9 @@ class PreferencesManager(private val context: Context) {
     val currencyEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_CURRENCY_ENABLED] ?: true }
     val kaomojiEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_KAOMOJI_ENABLED] ?: true }
     val phrasesEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_PHRASES_ENABLED] ?: true }
+    val translateEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_TRANSLATE_ENABLED] ?: true }
+    val textEditingEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_TEXT_EDITING_ENABLED] ?: true }
+    val emojiEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_EMOJI_ENABLED] ?: true }
 
     val followSystemTheme: Flow<Boolean> = context.dataStore.data.map { it[KEY_FOLLOW_SYSTEM_THEME] ?: false }
     val themePreference: Flow<String> = context.dataStore.data.map { it[KEY_THEME_PREFERENCE] ?: "system" }
@@ -90,6 +99,9 @@ class PreferencesManager(private val context: Context) {
     suspend fun setCurrencyEnabled(v: Boolean) { context.dataStore.edit { it[KEY_CURRENCY_ENABLED] = v } }
     suspend fun setKaomojiEnabled(v: Boolean) { context.dataStore.edit { it[KEY_KAOMOJI_ENABLED] = v } }
     suspend fun setPhrasesEnabled(v: Boolean) { context.dataStore.edit { it[KEY_PHRASES_ENABLED] = v } }
+    suspend fun setTranslateEnabled(v: Boolean) { context.dataStore.edit { it[KEY_TRANSLATE_ENABLED] = v } }
+    suspend fun setTextEditingEnabled(v: Boolean) { context.dataStore.edit { it[KEY_TEXT_EDITING_ENABLED] = v } }
+    suspend fun setEmojiEnabled(v: Boolean) { context.dataStore.edit { it[KEY_EMOJI_ENABLED] = v } }
 
     suspend fun setFollowSystemTheme(v: Boolean) { context.dataStore.edit { it[KEY_FOLLOW_SYSTEM_THEME] = v } }
     suspend fun setThemePreference(v: String) { context.dataStore.edit { it[KEY_THEME_PREFERENCE] = v } }

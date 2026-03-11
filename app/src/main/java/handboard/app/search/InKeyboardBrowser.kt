@@ -1,7 +1,9 @@
 package handboard.app.search
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.*
 import androidx.compose.animation.AnimatedVisibility
@@ -19,7 +21,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import handboard.app.core.theme.*
+import handboard.app.core.theme.ActionKeyBackground
+import handboard.app.core.theme.KeyText
+import handboard.app.core.theme.KeyTextDim
+import handboard.app.core.theme.KeyboardBackground
+import handboard.app.core.theme.ShiftActiveBackground
 import handboard.app.layout.ui.*
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -28,6 +34,7 @@ fun InKeyboardBrowser(
     url: String,
     onClose: () -> Unit,
     onCommitText: (String) -> Unit,
+    onDismissKeyboard: () -> Unit, // ★ EKLENDİ (Klavyeyi Kapatmak için)
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -41,16 +48,23 @@ fun InKeyboardBrowser(
 
     Column(modifier = modifier.fillMaxWidth().fillMaxHeight().background(KeyboardBackground)) {
         
-        // Üst Araç Çubuğu
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { webView?.destroy(); onClose() }.padding(8.dp)) { CloseIcon(tint = KeyText, size = 16.dp) }
+            // KAPAT TUŞU -> KLAVYEYİ KAPATIR
+            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { 
+                webView?.destroy()
+                onClose()
+                onDismissKeyboard() 
+            }.padding(8.dp)) { CloseIcon(tint = KeyText, size = 16.dp) }
+            
             Spacer(Modifier.width(4.dp))
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if(canGoBack) ActionKeyBackground else KeyboardBackground).clickable(enabled = canGoBack) { webView?.goBack() }.padding(8.dp)) { BackArrowIcon(tint = if(canGoBack) KeyText else KeyTextDim, size = 16.dp) }
+            
             Spacer(Modifier.width(4.dp))
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if(canGoForward) ActionKeyBackground else KeyboardBackground).clickable(enabled = canGoForward) { webView?.goForward() }.padding(8.dp)) { ForwardArrowIcon(tint = if(canGoForward) KeyText else KeyTextDim, size = 16.dp) }
+            
             Spacer(Modifier.width(4.dp))
             Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { webView?.reload() }.padding(8.dp)) { RefreshIcon(tint = KeyText, size = 14.dp) }
 
@@ -59,12 +73,31 @@ fun InKeyboardBrowser(
                 Text(currentUrl.removePrefix("https://").removePrefix("www."), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = KeyTextDim)
             }
 
-            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ShiftActiveBackground).clickable { onCommitText(currentUrl) }.padding(8.dp)) { ContentCopyIcon(tint = KeyText, size = 14.dp) }
+            // PAYLAŞ TUŞU -> KLAVYEYİ KAPATIR
+            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ActionKeyBackground).clickable { 
+                try {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, pageTitle)
+                        putExtra(Intent.EXTRA_TEXT, "$pageTitle\n$currentUrl")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Paylaş").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: Exception) {}
+                onDismissKeyboard()
+            }.padding(8.dp)) { ShareIcon(tint = KeyText, size = 14.dp) }
+
+            Spacer(Modifier.width(4.dp))
+
+            // YAPIŞTIR TUŞU -> KLAVYEYİ KAPATIR
+            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(ShiftActiveBackground).clickable { 
+                onCommitText(currentUrl)
+                onDismissKeyboard()
+            }.padding(8.dp)) { ContentCopyIcon(tint = KeyText, size = 14.dp) }
         }
 
         AnimatedVisibility(visible = isLoading) { LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().height(2.dp), color = ShiftActiveBackground) }
 
-        // WebView
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {
@@ -85,7 +118,15 @@ fun InKeyboardBrowser(
                             isLoading = false; canGoBack = v?.canGoBack() ?: false; canGoForward = v?.canGoForward() ?: false
                             p?.let { currentUrl = it }; v?.title?.let { pageTitle = it }
                         }
-                        override fun shouldOverrideUrlLoading(v: WebView?, r: WebResourceRequest?): Boolean = false
+                        override fun shouldOverrideUrlLoading(v: WebView?, r: WebResourceRequest?): Boolean {
+                            val reqUrl = r?.url?.toString() ?: return false
+                            if (reqUrl.startsWith("http")) return false
+                            try {
+                                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(reqUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                onDismissKeyboard()
+                            } catch (_: Exception) {}
+                            return true
+                        }
                     }
                     webChromeClient = object : WebChromeClient() {
                         override fun onProgressChanged(v: WebView?, p: Int) { progress = p; if (p == 100) isLoading = false }

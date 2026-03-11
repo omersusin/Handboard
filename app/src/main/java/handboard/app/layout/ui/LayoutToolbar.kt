@@ -5,12 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,7 +32,9 @@ enum class KeyboardPanel { KEYBOARD, EMOJI, CLIPBOARD, KAOMOJI, TEXT_EDITING, SE
 @Composable
 fun LayoutToolbar(
     currentLayoutName: String, currentPanel: KeyboardPanel,
-    searchEnabled: Boolean, currencyEnabled: Boolean, clipboardEnabled: Boolean, kaomojiEnabled: Boolean, phrasesEnabled: Boolean,
+    searchEnabled: Boolean, currencyEnabled: Boolean, clipboardEnabled: Boolean, 
+    kaomojiEnabled: Boolean, phrasesEnabled: Boolean, translateEnabled: Boolean, 
+    textEditingEnabled: Boolean, emojiEnabled: Boolean,
     onSwitchLayout: () -> Unit, onSwitchPanel: (KeyboardPanel) -> Unit, onOpenSettings: () -> Unit
 ) {
     Row(
@@ -55,12 +55,12 @@ fun LayoutToolbar(
             if (currentPanel != KeyboardPanel.KEYBOARD) ToolbarIconButton({ KeyboardIcon(tint = KeyText, size = 16.dp) }, false) { onSwitchPanel(KeyboardPanel.KEYBOARD) }
             if (phrasesEnabled) ToolbarIconButton({ PhraseIcon(tint = KeyText, size = 16.dp) }, currentPanel == KeyboardPanel.PHRASES) { onSwitchPanel(if (currentPanel == KeyboardPanel.PHRASES) KeyboardPanel.KEYBOARD else KeyboardPanel.PHRASES) }
             if (currencyEnabled) ToolbarIconButton({ CurrencyIcon(tint = KeyText, size = 16.dp) }, currentPanel == KeyboardPanel.CURRENCY) { onSwitchPanel(if (currentPanel == KeyboardPanel.CURRENCY) KeyboardPanel.KEYBOARD else KeyboardPanel.CURRENCY) }
-            ToolbarIconButton({ TranslateIcon(tint = KeyText, size = 16.dp) }, currentPanel == KeyboardPanel.TRANSLATE) { onSwitchPanel(if (currentPanel == KeyboardPanel.TRANSLATE) KeyboardPanel.KEYBOARD else KeyboardPanel.TRANSLATE) }
+            if (translateEnabled) ToolbarIconButton({ TranslateIcon(tint = KeyText, size = 16.dp) }, currentPanel == KeyboardPanel.TRANSLATE) { onSwitchPanel(if (currentPanel == KeyboardPanel.TRANSLATE) KeyboardPanel.KEYBOARD else KeyboardPanel.TRANSLATE) }
             if (searchEnabled) ToolbarIconButton({ SearchIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.SEARCH) { onSwitchPanel(if (currentPanel == KeyboardPanel.SEARCH) KeyboardPanel.KEYBOARD else KeyboardPanel.SEARCH) }
-            ToolbarIconButton({ EditIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.TEXT_EDITING) { onSwitchPanel(if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD else KeyboardPanel.TEXT_EDITING) }
+            if (textEditingEnabled) ToolbarIconButton({ EditIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.TEXT_EDITING) { onSwitchPanel(if (currentPanel == KeyboardPanel.TEXT_EDITING) KeyboardPanel.KEYBOARD else KeyboardPanel.TEXT_EDITING) }
             if (clipboardEnabled) ToolbarIconButton({ ClipboardIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.CLIPBOARD) { onSwitchPanel(if (currentPanel == KeyboardPanel.CLIPBOARD) KeyboardPanel.KEYBOARD else KeyboardPanel.CLIPBOARD) }
             if (kaomojiEnabled) ToolbarIconButton({ KaomojiIcon(tint = KeyText, size = 16.dp) }, currentPanel == KeyboardPanel.KAOMOJI) { onSwitchPanel(if (currentPanel == KeyboardPanel.KAOMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.KAOMOJI) }
-            ToolbarIconButton({ EmojiIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.EMOJI) { onSwitchPanel(if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.EMOJI) }
+            if (emojiEnabled) ToolbarIconButton({ EmojiIcon(tint=KeyText, size=16.dp) }, currentPanel == KeyboardPanel.EMOJI) { onSwitchPanel(if (currentPanel == KeyboardPanel.EMOJI) KeyboardPanel.KEYBOARD else KeyboardPanel.EMOJI) }
             ToolbarIconButton({ GlobeIcon(tint=KeyText, size=16.dp) }, false, onSwitchLayout)
             ToolbarIconButton({ SettingsGearIcon(modifier=Modifier.size(16.dp), tint=KeyText) }, false, onOpenSettings)
         }

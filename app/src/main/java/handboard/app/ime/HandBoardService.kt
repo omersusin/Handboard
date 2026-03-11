@@ -91,7 +91,6 @@ class HandBoardService : InputMethodService(), LifecycleOwner, ViewModelStoreOwn
     override fun onCreateInputView(): View {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         
-        // ★ ÇÖZÜM: ViewTree owners eksiksiz gönderiliyor (this, this, this)
         return createComposeView(
             lifecycleOwner = this,
             viewModelStoreOwner = this,
@@ -123,6 +122,9 @@ class HandBoardService : InputMethodService(), LifecycleOwner, ViewModelStoreOwn
                 val currencyEnabled by prefs.currencyEnabled.collectAsState(initial = true)
                 val kaomojiEnabled by prefs.kaomojiEnabled.collectAsState(initial = true)
                 val phrasesEnabled by prefs.phrasesEnabled.collectAsState(initial = true)
+                val translateEnabled by prefs.translateEnabled.collectAsState(initial = true)
+                val textEditingEnabled by prefs.textEditingEnabled.collectAsState(initial = true)
+                val emojiEnabled by prefs.emojiEnabled.collectAsState(initial = true)
 
                 val multiEnabled by prefs.multilingualEnabled.collectAsState(initial = false)
                 val activeDicts by prefs.activeDicts.collectAsState(initial = setOf("en_us"))
@@ -151,7 +153,8 @@ class HandBoardService : InputMethodService(), LifecycleOwner, ViewModelStoreOwn
                             layoutSwitcher = ls, preferencesManager = prefs, heightScale = if (lk) hs * 1.25f else hs,
                             hapticEnabled = hap, soundEnabled = snd, numberRowEnabled = nr, spacebarCursor = sc2,
                             clipboardEnabled = clipboardEnabled, searchEnabled = searchEnabled, currencyEnabled = currencyEnabled,
-                            kaomojiEnabled = kaomojiEnabled, phrasesEnabled = phrasesEnabled,
+                            kaomojiEnabled = kaomojiEnabled, phrasesEnabled = phrasesEnabled, translateEnabled = translateEnabled,
+                            textEditingEnabled = textEditingEnabled, emojiEnabled = emojiEnabled,
                             clipboardHistory = if (clipboardEnabled) clipboard else null,
                             suggestionBar = if (showPred) { { SuggestionBar(suggestions = sugs, onSuggestionClick = { 
                                 val cur = getCurrentWord()

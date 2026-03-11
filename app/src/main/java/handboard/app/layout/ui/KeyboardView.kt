@@ -48,7 +48,8 @@ fun KeyboardView(
     numberRowEnabled: Boolean = false,
     spacebarCursor: Boolean = true,
     clipboardEnabled: Boolean = false, searchEnabled: Boolean = true, currencyEnabled: Boolean = true,
-    kaomojiEnabled: Boolean = true, phrasesEnabled: Boolean = true,
+    kaomojiEnabled: Boolean = true, phrasesEnabled: Boolean = true, translateEnabled: Boolean = true,
+    textEditingEnabled: Boolean = true, emojiEnabled: Boolean = true,
     clipboardHistory: ClipboardHistory? = null,
     suggestionBar: (@Composable () -> Unit)? = null,
     onTextInput: (String) -> Unit, onBackspace: () -> Unit, onEnter: () -> Unit,
@@ -83,7 +84,8 @@ fun KeyboardView(
             LayoutToolbar(
                 currentLayoutName = layoutSwitcher.currentLayoutName, currentPanel = currentPanel,
                 searchEnabled = searchEnabled, currencyEnabled = currencyEnabled, clipboardEnabled = clipboardEnabled,
-                kaomojiEnabled = kaomojiEnabled, phrasesEnabled = phrasesEnabled,
+                kaomojiEnabled = kaomojiEnabled, phrasesEnabled = phrasesEnabled, translateEnabled = translateEnabled,
+                textEditingEnabled = textEditingEnabled, emojiEnabled = emojiEnabled,
                 onSwitchLayout = {
                     layoutSwitcher.nextLayout(); state.switchToLetters(); currentPanel = KeyboardPanel.KEYBOARD
                     scope.launch { preferencesManager.setSelectedLayout(layoutSwitcher.currentLayoutName) }
@@ -128,7 +130,15 @@ fun KeyboardView(
                                                 else -> {}
                                             }
                                         } else {
-                                            handleKeyPress(kd, state, hasSymbolRows2, onTextInput, onBackspace, onEnter)
+                                            when (val action = kd.action) {
+                                                is KeyAction.Text -> { val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char; onTextInput(text); state.onTextCommitted() }
+                                                KeyAction.Space -> { onTextInput(" "); state.onTextCommitted() }
+                                                KeyAction.Backspace -> onBackspace()
+                                                KeyAction.Enter -> onEnter()
+                                                KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
+                                                KeyAction.SwitchToSymbols -> state.switchToSymbols()
+                                                KeyAction.SwitchToLetters -> state.switchToLetters()
+                                            }
                                         }
                                     }
                                 )
@@ -142,17 +152,5 @@ fun KeyboardView(
         else if (currentPanel == KeyboardPanel.KAOMOJI) KaomojiView(heightScale = heightScale, onKaomojiClick = { onTextInput(it) })
         else if (currentPanel == KeyboardPanel.PHRASES) PhrasesPanel(onCommitText = { onTextInput(it); currentPanel = KeyboardPanel.KEYBOARD }, onClose = { currentPanel = KeyboardPanel.KEYBOARD })
         else if (currentPanel == KeyboardPanel.TEXT_EDITING) TextEditingBar(onCursorLeft = { onCursorMove(-1) }, onCursorRight = { onCursorMove(1) }, onCursorHome = onCursorHome, onCursorEnd = onCursorEnd, onSelectAll = onSelectAll, onCopy = onCopy, onCut = onCut, onPaste = onPaste, onUndo = onUndo, onRedo = onRedo, onClose = { currentPanel = KeyboardPanel.KEYBOARD })
-    }
-}
-
-private fun handleKeyPress(keyData: KeyData, state: KeyboardState, hasSymbolRows2: Boolean, onTextInput: (String) -> Unit, onBackspace: () -> Unit, onEnter: () -> Unit) {
-    when (val action = keyData.action) {
-        is KeyAction.Text -> { val text = if (state.shouldUpperCase && state.currentLayer == KeyboardLayer.LETTERS) action.char.uppercase() else action.char; onTextInput(text); state.onTextCommitted() }
-        KeyAction.Space -> { onTextInput(" "); state.onTextCommitted() }
-        KeyAction.Backspace -> onBackspace()
-        KeyAction.Enter -> onEnter()
-        KeyAction.Shift -> state.handleShiftPress(hasSymbolRows2)
-        KeyAction.SwitchToSymbols -> state.switchToSymbols()
-        KeyAction.SwitchToLetters -> state.switchToLetters()
     }
 }

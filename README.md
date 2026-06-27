@@ -207,7 +207,7 @@ MIT License
 
 ---
 
-## Contact
+## Contact:
 
 Email: tekgercek73@gmail.com  
 GitHub: https://github.com/omersusin  
